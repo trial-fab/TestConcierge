@@ -1,0 +1,306 @@
+[Skip to Main Content](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx#content)
+
+[University of South Florida](https://www.usf.edu/)
+
+## [USF Global Learning](https://www.usf.edu/world/education-abroad/index.aspx)
+
+[USF World](https://www.usf.edu/world/index.aspx)
+
+[Show
+
+Search](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+Search for:
+
+## Main Navigation
+
+[Show Menu](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+[Give Now](https://giving.usf.edu/online/gift/f/610005/)
+
+* [Show Find your Program](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+  + [Finding A Program](https://www.usf.edu/world/education-abroad/programs/index.aspx)
+  + [Course Search](http://educationabroad.global.usf.edu/?go=CourseSearch)
+  + [Faculty-Led Programs](https://www.usf.edu/world/education-abroad/programs/faculty-led-programs.aspx)
+  + [Exchange Programs](https://www.usf.edu/world/education-abroad/programs/exchange-programs.aspx)
+  + [Affiliate Programs](https://www.usf.edu/world/education-abroad/programs/affiliate-programs.aspx)
+
+  + [Internships Abroad](https://www.usf.edu/world/education-abroad/programs/internships-abroad.aspx)
+* [Show Applying & Going](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+  + [Why Study Abroad?](https://www.usf.edu/world/education-abroad/applying-going/index.aspx)
+  + [Getting Started](https://www.usf.edu/world/education-abroad/applying-going/getting-started.aspx)
+  + [Courses & Credit](https://www.usf.edu/world/education-abroad/applying-going/courses-and-credit.aspx)
+  + [Incoming Exchange](https://www.usf.edu/world/education-abroad/applying-going/incoming-exchange.aspx)
+  + [Non-USF Students](https://www.usf.edu/world/education-abroad/applying-going/non-usf-students.aspx)
+
+  + [Additional Resources](https://www.usf.edu/world/for-global-travelers/online-resources.aspx)
+  + [Parents & Families](https://www.usf.edu/world/education-abroad/applying-going/parents-and-families.aspx)
+  + [USF Health Students](https://www.usf.edu/world/education-abroad/applying-going/usf-health-students.aspx)
+* [Show Funding, Payments, & Registration](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+  + [Paying for Study Abroad](https://www.usf.edu/world/education-abroad/funding-payments-registration/index.aspx)
+  + [Scholarships & Funding](https://www.usf.edu/world/education-abroad/funding-payments-registration/scholarships/index.aspx)
+* [Show Policies, Practices, & Procedures](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+  + [Eligibility Requirements](https://www.usf.edu/world/education-abroad/policies-practices-procedures/eligibility.aspx)
+  + [Academics](https://www.usf.edu/world/education-abroad/policies-practices-procedures/academics.aspx)
+  + [Housing Policies](https://www.usf.edu/world/education-abroad/policies-practices-procedures/housing.aspx)
+  + [Conduct Expectations](https://www.usf.edu/world/education-abroad/policies-practices-procedures/conduct.aspx)
+  + [Financial Policies](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+  + [For Faculty & Staff](https://www.usf.edu/world/education-abroad/policies-practices-procedures/faculty/index.aspx)
+* [Show About Us](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+  + [Mission & Staff](https://www.usf.edu/world/education-abroad/about-us/index.aspx)
+  + [Annual Reports](https://www.usf.edu/world/education-abroad/about-us/annual-reports.aspx)
+  + [Awards & Recognitions](https://www.usf.edu/world/education-abroad/about-us/awards-and-recognitions.aspx)
+  + [School of Record](https://www.usf.edu/world/education-abroad/about-us/school-of-record.aspx)
+  + [Contact Us](https://www.usf.edu/world/education-abroad/about-us/contact-us.aspx)
+* [Show Login](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+  + [Existing Applicants/Users](https://educationabroad.global.usf.edu/index.cfm?FuseAction=Security.AngLogin)
+  + [Login Assistance](https://www.usf.edu/world/education-abroad/login/login-assistance.aspx)
+  + [MyUSF](https://my.usf.edu/)
+
+* [MyUSF](https://my.usf.edu/)
+* [Directory](https://directory.usf.edu/)
+
+# Policies, Practices, & Procedures
+
+[Skip Over Breadcrumbs and Secondary Navigation](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx#content-title)
+
+## Breadcrumb Navigation
+
+* [USF Global Learning](https://www.usf.edu/world/education-abroad)
+* [Policies, Practices, & Procedures](https://www.usf.edu/world/education-abroad/policies-practices-procedures)
+* Financial Policies
+
+[Show  Secondary Navigation](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
++ - [Eligibility Requirements](https://www.usf.edu/world/education-abroad/policies-practices-procedures/eligibility.aspx)
+  - [Academics](https://www.usf.edu/world/education-abroad/policies-practices-procedures/academics.aspx)
+  - [Housing Policies](https://www.usf.edu/world/education-abroad/policies-practices-procedures/housing.aspx)
+  - [Conduct Expectations](https://www.usf.edu/world/education-abroad/policies-practices-procedures/conduct.aspx)
+  - [Financial Policies](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+  - [For Faculty & Staff](https://www.usf.edu/world/education-abroad/policies-practices-procedures/faculty/index.aspx)
+    * [Additional Resources & Forms](https://www.usf.edu/world/education-abroad/policies-practices-procedures/faculty/additional-resources-and-forms.aspx)
+    * [Advising Resources](https://www.usf.edu/world/education-abroad/policies-practices-procedures/faculty/advising-resources.aspx)
+    * [Developing a Program](https://www.usf.edu/world/education-abroad/policies-practices-procedures/faculty/developing-a-program.aspx)
+    * [Leading a Program](https://www.usf.edu/world/education-abroad/policies-practices-procedures/faculty/leading-a-program.aspx)
+    * [Proposing a Program](https://www.usf.edu/world/education-abroad/policies-practices-procedures/faculty/proposing-a-program.aspx)
+    * [Global Learning Office Overview](https://www.usf.edu/world/education-abroad/policies-practices-procedures/faculty/eao.aspx)
+    * [Non-Credit Programs](https://www.usf.edu/world/education-abroad/policies-practices-procedures/faculty/non-credit-programs.aspx)
+    * [Request a Presentation](https://www.usf.edu/world/education-abroad/policies-practices-procedures/faculty/request-a-presentation.aspx)
+    * [USF Health Faculty](https://www.usf.edu/world/education-abroad/policies-practices-procedures/faculty/usf-health-faculty.aspx)
+
+## Financial Policies
+
+The following information is excerpted from Program Terms and Conditions signed by
+All Participants). While the information below is generally the same, students should
+refer to the Terms and Conditions on their [program applications](https://educationabroad.global.usf.edu/index.cfm?FuseAction=Students.AngularHome) for specific practices and policies about the program they have applied to.
+
+Students must withdraw from a program in writing as soon as possible.  If they withdraw,
+they are liable for the withdrawal penalty, any program payments made on my behalf
+(such as accommodation, transportation, vendor fees for program administration, cultural
+activities etc.) and non-recoverable program costs (where USF is unable to recover
+expenses). Specific programs may have more stringent deposit and withdrawal requirements.
+
+| Days Prior to Program | Withdrawal/Cancellation Penalty |
+| --- | --- |
+| 31 or more days prior to program start date | $500 **plus** any non-recoverable costs and program payments made on my behalf - **which could be up to the full cost of the program.** |
+| 30 or fewer days prior to program start date | Full amount of program charges. |
+
+Students who withdraw due to medical emergencies or involuntary call to active duty,
+may appeal for partial refunds through a petition process.  Even in these instances,
+USF cannot refund fees ***costs*** that cannot be returned (non-recoverable fees) by partners or vendors.  Students
+must provide documentation as part of the petition process. We strongly recommended
+that participants purchase Cancel for Any Reason or Interruption for Any Reason Insurance
+for this reason.
+
+### FAQ
+
+[Show Payment Information](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+**How do I make payments for the program?**
+
+Once charges are posted to your account you will receive an email from a USF Global
+Learning fiscal team-member.  You can make your deposit payment for program confirmation
+online in [Student Self-Service (formerly OASIS)](https://www.usf.edu/business-finance/controller/student-services/cashiers/line-item-pay.aspx).  On the payments tab, select the option to "Pay by line item", check the box or
+boxes for the program description which will start with a 5-digit number, then 6 digits
+for the term date and then the program name and indicate your payment amount.
+
+**What happens if I miss a payment deadline?**
+
+Missing a payment deadline may result in removal from the program. If you anticipate
+any issues, contact the Education Abroad Office immediately to explore your options.
+
+[Show Deposit Information](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+**Is a deposit required to secure my spot in the program?**
+
+Yes, a non-refundable deposit is required to secure your place in the program. The
+deposit payment which applies to the total Study Abroad Program Cost, is due within
+5 business days of your commitment to the program or no later than the application
+deadline, whichever is first. **Non-payment of your confirmation payment does not absolve you of your financial liability.**
+
+**Can my deposit be transferred to another program if I decide not to participate?**
+
+Deposits are generally non-transferable unless otherwise stated in the program’s terms.
+Please reach out to the Education Abroad Office for case-by-case evaluations.
+
+[Show Scholarships and Financial Aid](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+**Are there scholarships available for education abroad programs?**
+
+Yes, various scholarships are available for eligible students. You are encouraged
+to apply early, as funding is limited. Visit [USF Education Abroad Scholarships](https://www.usf.edu/world/education-abroad/funding-payments-registration/scholarships/index.aspx) for more information on available scholarships and deadlines. You can also reach
+out to the program advisor listed on the [digital program brochure](https://educationabroad.global.usf.edu/_portal/program-discovery) for your chosen education abroad program to inquire about available awards/scholarships.
+
+**Can financial aid be used to cover education abroad costs?**
+
+Yes, financial aid can be applied to education abroad expenses, but it depends on
+your specific award package. Some scholarships and awards cover only tuition and do
+not include program costs.
+
+If you have Bright Futures, it can be applied toward the program cost if all tuition
+is paid off. However, Florida Prepaid only covers tuition expenses and will not apply
+to additional program fees.
+
+We recommend reaching out to the Financial Aid Office to understand how your financial
+aid package applies to your study abroad program.
+
+All aid/awards are first posted to tuition/fees before the program costs, so you may
+have a program balance even after receiving the aid/scholarship.
+
+[Show Withdrawal and Refund Policy](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+Yes, withdrawing from the program may result in penalties based on the timeline of
+your withdrawal:
+
+Withdrawal Policy
+
+| Days Prior to Program | Withdrawal/Cancellation Penalty |
+| --- | --- |
+| 31 or more days prior to program start date | $500 **plus** any non-recoverable costs and program payments made on my behalf - which could be up to the full cost of the program. |
+| 30 or fewer days prior to program start date | Full amount of program charges. |
+
+If you are considering withdrawing, please contact the Education Abroad Office immediately
+to understand your financial obligations.
+
+**How are refunds processed?**
+
+Refunds will first be applied to any outstanding balance on your student account.
+Once all balances are settled, any remaining funds will be returned to the original
+form of payment. Processing times may vary based on the university’s refund policies.
+
+**Why am I being charged a financial penalty?**
+
+When you applied to the program, you agreed to its financial terms and conditions.
+We understand that the information can be extensive, so we provided multiple reminders
+to help ensure you are aware of your financial responsibilities:
+
+* Terms and Conditions
+* System Notification Prior to Commitment
+* Commitment Email
+* Greenlight Email
+
+Similar to other prepaid travel experiences like tours or cruises, our programs involve
+financial commitments. When you enroll, USF allocates funds on your behalf and with
+program providers. As a result, withdrawing from the program after commitment incurs
+financial penalties.
+
+**If I withdraw from the program, am I eligible for a refund?**
+
+Refund eligibility depends on the withdrawal date and program policies. The deposit
+is non-refundable.  Please review the program’s terms or contact the Education Abroad
+Office for specific details.
+
+**How do I appeal my withdraw penalty?**
+
+Students who withdraw due to medical emergencies/illness or involuntary call to active
+duty, may appeal for partial refunds through a petition process.  Even in these instances,
+USF cannot refund fees costs that cannot be returned (non-recoverable fees) by partners
+or vendors.  Students must provide documentation as part of the petition process.
+ Appeals for other reasons will not be considered. We strongly recommend that participants
+purchase Cancel for Any Reason or Interruption for Any Reason Insurance for this reason.
+
+[Show Account Holds and Outstanding Balances](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+**I have a hold on my account. Can it be removed so I can register for classes?**
+
+No, per **university regulations** holds on student accounts due to outstanding balances will not be temporarily removed
+for class registration or grade releases. Students must pay their outstanding balance
+in full before any holds can be lifted.
+
+If you have questions regarding your account balance, please contact the Registrar’s Office or Education Abroad Office for further assistance.
+
+[Show Tuition Deferment](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+**I have tuition deferment. Do I need to pay in full for the program 30 days before
+program start date?**
+
+Program costs are not deferred, and the tuition memo would not apply. We do work with
+you to postpone the program costs. To be considered for postponement, you need to
+complete the [Postponement form](https://usf.box.com/s/b864s27ro9tpvf6ajm3zy3sv4yi3982m) and attach a copy of the screenshots from Self-Service with the accepted award amounts
+/ Aid for the term of the program.
+
+Once we receive the information, we will review and let you know the amount granted
+postponement.
+
+[Show Posting of aid/awards](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+**I still have an outstanding balance on my Banner account even though I submitted my
+program postponement documents.**
+
+The balance will remain on your account till the award/aid is posted to your Banner
+account. Once it is posted, it should reduce the program balance unless you have outstanding
+tuition and fees.
+
+**Contact Information:**
+
+For further questions, please contact our fiscal office.
+
+[University of South Florida](https://www.usf.edu/)
+
+[Show Menu](https://www.usf.edu/world/education-abroad/policies-practices-procedures/fiscal.aspx)
+
+* [About USF](https://www.usf.edu/about-usf/index.aspx)
+* [Academics](https://www.usf.edu/academics/index.aspx)
+* [Admissions](https://www.usf.edu/admissions/index.aspx)
+* [Locations](https://www.usf.edu/locations/index.aspx)
+* [Campus Life](https://www.usf.edu/campus-life/index.aspx)
+* [Research](https://www.usf.edu/research/index.aspx)
+
+* [Administrative Units](https://www.usf.edu/about-usf/administrative-units.aspx)
+* [Regulations & Policies](https://www.usf.edu/regulations-policies/index.aspx)
+* [Human Resources](https://www.usf.edu/hr/index.aspx)
+* [Work at USF](https://jobs.usf.edu/)
+* [Emergency & Safety](https://www.usf.edu/public-safety/emergency-management/index.aspx)
+* [Title IX](https://www.usf.edu/title-ix/index.aspx)
+
+* [USF Health](https://health.usf.edu/)
+* [USF Athletics](https://gousfbulls.com/)
+* [USF Alumni](https://www.usfalumni.org/)
+* [Support USF](https://giving.usf.edu/)
+* [USF Libraries](https://www.lib.usf.edu/)
+* [USF World](https://www.usf.edu/world/index.aspx)
+
+4202 E. Fowler Avenue
+Tampa, FL 33620, USA
+
+* [Facebook](http://facebook.com/USouthFlorida)
+* [YouTube](http://www.youtube.com/usfchannel)
+* [LinkedIn](http://www.linkedin.com/edu/school?id=18130)
+* [Blog](http://www.blog.com/)
+* [Instagram](http://www.instagram.com/)
+
+Copyright [©](https://a.cms.omniupdate.com/11/?skin=usf&account=USFMainPROD&site=usf_edu&action=de&path=/world/education-abroad/policies-practices-procedures/fiscal.pcf) 2025, University of South Florida. All rights reserved.
+
+This website is maintained by Global Learning.
+
+* [Privacy](https://www.usf.edu/about-usf/about-this-site.aspx)
+* [Contact USF](https://www.usf.edu/about-usf/contact-usf.aspx)
+* [Visit USF](https://www.usf.edu/about-usf/visit-usf.aspx?utm_source=visit-usf&utm_medium=footer&utm_campaign=usfcms)
+* [Accessibility](https://www.usf.edu/about-usf/about-this-site.aspx#accessibility)

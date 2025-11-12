@@ -1,0 +1,379 @@
+:root {
+  --usf-green: #006747;
+  --usf-dark-green: #004f3c;
+  --usf-gold: #cfc493;
+  --usf-white: #ffffff;
+  --usf-shadow: rgba(0, 0, 0, 0.12);
+}
+
+/* Base Page Styles (applies globally across all pages) */
+html, body {
+  font-family: 'Segoe UI', Roboto, 'Open Sans', sans-serif;
+  scroll-behavior: smooth;
+  margin: 0;
+}
+
+/* Smooth transition for all elements */
+* {
+  transition: all 0.25s ease-in-out;
+}
+
+/* Soft moving light overlay for subtle animation across all pages */
+html, body, .stApp {
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Defines how the sunlight gradient moves across the screen */
+@keyframes globalSunSweep {
+  0% { left: -70%; opacity: 0; }
+  20% { opacity: 0.5; }
+  50% { left: 130%; opacity: 0; }
+  100% { left: 130%; opacity: 0; }
+}
+
+/* Ensures all app content stays above background animations */
+.stApp, [data-testid="stAppViewContainer"] {
+  position: relative;
+  z-index: 2;
+}
+
+/* General Heading Styles (used in hero and dashboard sections) */
+h1, h2, h3 {
+  color: var(--usf-green);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Main h1 headers use a gradient text effect with soft entry animation */
+h1 {
+  background: #004f3c;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  animation: floatFadeIn 1.8s ease-in-out;
+}
+@keyframes floatFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* SIDEBAR SECTION
+   This defines the layout, color, and typography inside the sidebar.
+   Includes buttons, session list, and logout area. */
+[data-testid="stSidebar"] {
+  background: var(--usf-green);
+  box-shadow: 4px 0 18px rgba(0, 0, 0, 0.25);
+  border-right: 2px solid rgba(207,196,147,0.3);
+  font-size: 1.05rem !important;
+}
+
+/* All text inside sidebar is clean and readable */
+[data-testid="stSidebar"] * {
+  font-size: 1.05rem !important;
+  font-weight: 500 !important;
+  opacity: 1 !important;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Section titles (like SESSIONS, SEARCH, etc.) */
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+  color: var(--usf-gold) !important;
+  text-transform: uppercase;
+  font-size: 1.15rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 1px;
+  margin-top: 1rem;
+  opacity: 1 !important;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Sidebar buttons and links (New Chat, Logout, etc.) */
+[data-testid="stSidebar"] button,
+[data-testid="stSidebar"] a {
+  font-size: 1.05rem !important;
+  font-weight: 600 !important;
+  background: rgba(255,255,255,0.08) !important;
+  border-radius: 12px !important;
+  padding: 0.8rem 1rem !important;
+  border: 1px solid rgba(255,255,255,0.25) !important;
+  transition: all 0.25s ease-in-out;
+  text-align: center !important;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+/* On hover, buttons glow slightly with gold tone */
+[data-testid="stSidebar"] button:hover,
+[data-testid="stSidebar"] a:hover {
+  background: linear-gradient(90deg, var(--usf-gold), #fff7c0) !important;
+  color: var(--usf-dark-green) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px rgba(255,255,255,0.35);
+}
+
+/* Makes sure chat text fields and labels remain visible */
+[data-testid="stSidebar"] input,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] span {
+  font-size: 1.05rem !important;
+  opacity: 1 !important;
+}
+
+/* Logout button styled with gold-to-green gradient */
+.logout-section button {
+  background: linear-gradient(90deg, var(--usf-gold) 0%, var(--usf-green) 100%) !important;
+  font-weight: 700 !important;
+  font-size: 1.15rem !important;
+  border-radius: 14px !important;
+  width: 85%;
+  padding: 0.9rem 1rem !important;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 2px 5px rgba(0,0,0,0.4);
+  transition: all 0.3s ease-in-out;
+}
+.logout-section button:hover {
+  background: linear-gradient(90deg, var(--usf-green), var(--usf-gold)) !important;
+  color: #fffef8 !important;
+  box-shadow: 0 0 20px rgba(207,196,147,0.5);
+  transform: scale(1.05);
+}
+
+/* Highlights active or selected session item */
+[data-testid="stSidebar"] div[role="button"][aria-pressed="true"],
+[data-testid="stSidebar"] .stRadio label[data-checked="true"] {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-left: 4px solid var(--usf-gold);
+  color: #fffef8 !important;
+  font-weight: 700 !important;
+}
+
+/* Ensures session list items remain visible */
+[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] p {
+  color: #ffffff !important;
+  font-size: 1.05rem !important;
+  font-weight: 500 !important;
+  opacity: 1 !important;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.25);
+}
+
+/* Adds subtle gold-tinted scrollbar to sidebar */
+[data-testid="stSidebar"]::-webkit-scrollbar {
+  width: 10px;
+}
+[data-testid="stSidebar"]::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.3);
+  border-radius: 6px;
+}
+[data-testid="stSidebar"]::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.5);
+}
+
+/* HERO BANNER
+   This section handles the large banner image at the top. */
+.usf-hero {
+  position: relative;
+  width: 100%;
+  height: 30vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 0 0 32px 32px;
+  margin-bottom: 2rem;
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.25)),
+    url("https://www.usforacle.com/wp-content/uploads/sites/2/2020/09/0E7A0624-2048x1365.jpg");
+  background-size: cover;
+  background-position: center 70%;
+  background-attachment: scroll;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+/* Adds slow sweeping light across the hero image */
+.usf-hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -50%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    75deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.15) 30%,
+    transparent 100%
+  );
+  transform: skewX(-15deg);
+  animation: heroSweep 10s ease-in-out infinite;
+  z-index: 2;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+@keyframes heroSweep {
+  0% { left: -50%; opacity: 0; }
+  30% { opacity: 0.7; }
+  50% { left: 120%; opacity: 0; }
+  100% { left: 120%; opacity: 0; }
+}
+
+/* Adds soft golden glow around the hero banner edges */
+.usf-hero::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(120deg, rgba(255,255,255,0.2), var(--usf-gold), rgba(255,255,255,0.2), var(--usf-gold));
+  background-size: 300% 300%;
+  z-index: 1;
+  opacity: 0.6;
+}
+
+/* Chat tool picker + welcome tweaks */
+.tool-picker-card {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.tool-picker-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--usf-green);
+}
+
+.tool-picker-subtitle {
+  color: var(--usf-text-color);
+  font-weight: 500;
+}
+
+.chat-welcome {
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.chat-welcome h2 {
+  margin-bottom: 0.5rem;
+  color: var(--usf-green);
+}
+
+.chat-welcome p {
+  margin: 0 auto;
+  color: var(--usf-text-color);
+  font-size: 1.05rem;
+}
+
+[data-testid="stChatInput"] {
+  margin-left: 1rem;
+  margin-bottom: 3rem;
+}
+
+/* Styles for the hero banner text */
+.usf-hero h1,
+.usf-hero p {
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  transform: translateZ(40px);
+}
+
+/* Main hero heading (white text with glow) */
+.usf-hero h1 {
+  color: #004f3c;
+  -webkit-text-fill-color: #004f3c !important;
+  font-size: 3.4rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.hero-heading {
+  color: #004f3c;
+}
+
+.hero-heading .emoji {
+  filter: brightness(0) saturate(100%) invert(23%) sepia(79%) saturate(512%) hue-rotate(102deg) brightness(94%) contrast(92%);
+}
+
+/* Hero subtitle text */
+.usf-hero p {
+  color: #ffffff;
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* hero-auth styles handled inline for login view */
+
+/* LOGIN & DASHBOARD CARDS
+   Controls the translucent form cards and dashboard layout */
+
+/* The login / dashboard card container with glassy gradient effect */
+[data-testid="stForm"] {
+  position: relative;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 26px;
+  padding: 3rem 3.5rem;
+  border: 1px solid rgba(5, 5, 5, 0.6);
+
+  overflow: hidden;
+  animation: cardFloat 0.2s ease-out;
+  transition: all 0.4s ease;
+}
+
+/* Entrance animation for login card */
+@keyframes cardFloat {
+  from {opacity: 0; transform: translateY(25px) scale(0.98);}
+  to {opacity: 1; transform: translateY(0) scale(1);}
+}
+
+/* Makes sure all text and elements stay above glow layers */
+[data-testid="stForm"] * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Dashboard Metrics (numbers) styled to match theme */
+[data-testid="stMetricValue"] {
+  color: var(--usf)
+}
+/* Hide helper captions and instructions */
+[data-testid="stCaptionContainer"],
+[data-testid="InputInstructions"],
+[data-testid="stCaption"] {
+  display: none !important;
+}
+
+/* Bull avatar for user chat messages */
+[data-testid="stChatMessageAvatarUser"],
+.st-emotion-cache-23r7bk.e1ypd8m73 {
+  background-color: var(--usf-green);
+}
+
+[data-testid="stChatMessageAvatarUser"]::before,
+.st-emotion-cache-23r7bk.e1ypd8m73::before {
+  content: "🐂";
+  font-size: 1.3rem;
+}
+
+[data-testid="stChatMessageAvatarUser"] svg,
+.st-emotion-cache-23r7bk.e1ypd8m73 svg {
+  display: none !important;
+}
+
+/* Remove heading anchor icons */
+[data-testid="stHeading"] a,
+[data-testid="stHeading"] button,
+[data-testid="stHeading"] svg,
+h1 a,
+h2 a,
+h3 a,
+h1 svg,
+h2 svg,
+h3 svg,
+h1 button,
+h2 button,
+h3 button {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

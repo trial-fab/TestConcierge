@@ -1,0 +1,33 @@
+# Environment & secrets
+.env
+*.env.local
+.streamlit/secrets.toml
+
+# Python cache / build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE configs
+.idea/
+.vscode/
+
+# Data / logs 
+*.log
+logs/
+cache/
