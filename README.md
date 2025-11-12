@@ -62,9 +62,10 @@ Streamlit concierge for Admissions/Orientation staff that grounds every answer i
 ---
 
 ### Team Contributions
-- **Alice Doe** – Streamlit UI/UX, assistant flows, MCP integration.
-- **Bob Smith** – RAG pipeline, Supabase schema/RLS, deployment automation.
-- _Update with actual team names/roles._
+- **Fabrizio** – RAG pipeline architecture, Azure LLM integration, email/meeting assistant logic, Google Workspace tools, Supabase client, data ingestion pipeline.
+- **Chi** – Streamlit UI/UX design, CSS styling (styles.css), assistant interface components, UI helper functions, chat layout and visual polish.
+- **Gang** – Project architecture and folder structure, database schema design, session/state management systems, authentication framework, security implementation.
+- **Rishi** – MCP server/client implementation, tool orchestration and routing, agent-to-tool integration, context protocol for email/meeting workflows.
 
 ---
 
