@@ -66,7 +66,7 @@ def show_observability_dashboard():
 
         with col1:
             st.subheader("Request Volume Over Time")
-            st.caption("User queries, regenerations, and assistant actions")
+            st.caption("Request + regenerate events emitted from app.py")
 
             df_requests = pd.DataFrame({
                 'Time': dates,
@@ -76,7 +76,7 @@ def show_observability_dashboard():
 
         with col2:
             st.subheader("RAG Retrieval Quality")
-            st.caption("Cross-encoder rerank scores (0-1 scale)")
+            st.caption("Average rerank score from utils.rag pipeline")
 
             df_quality = pd.DataFrame({
                 'Time': dates,
@@ -89,7 +89,7 @@ def show_observability_dashboard():
 
         with col1:
             st.subheader("Response Latency Percentiles")
-            st.caption("P50 and P95 response times in milliseconds")
+            st.caption("P50 / P95 request latency derived from Splunk request events")
 
             df_latency = pd.DataFrame({
                 'Time': dates,
@@ -100,7 +100,7 @@ def show_observability_dashboard():
 
         with col2:
             st.subheader("Database Query Performance")
-            st.caption("Average Supabase operation duration (ms)")
+            st.caption("Supabase operations instrumented in utils.database")
 
             df_db = pd.DataFrame({
                 'Time': dates,
@@ -112,29 +112,28 @@ def show_observability_dashboard():
 
         # Event category breakdown
         st.subheader("Event Distribution by Category")
-        st.caption("Last hour event breakdown")
+        st.caption("Request, RAG, LLM, API, MCP, Database, Security, and Agent streams")
 
         col1, col2 = st.columns([2, 1])
 
         with col1:
             event_data = pd.DataFrame({
-                'Category': ['Database', 'LLM', 'API', 'MCP', 'Security'],
-                'Count': [312, 201, 67, 45, 3]
+                'Category': ['Request', 'RAG', 'LLM', 'API', 'Database', 'MCP', 'Security', 'Agent'],
+                'Count': [640, 480, 220, 160, 130, 110, 40, 25]
             })
             st.bar_chart(event_data.set_index('Category'), height=300)
 
         with col2:
             st.markdown("**Event Categories**")
             st.markdown("""
-            **Database** - Supabase session/message queries with timing
-
-            **LLM** - Azure Phi-4 inference with token metrics
-
-            **API** - External API calls (Gmail, Calendar, HuggingFace)
-
-            **MCP** - Tool invocations with full error context
-
-            **Security** - Content filter blocks and injection detection
+            **Request** – app.py request_start / request_complete / request_error events  
+            **RAG** – Retrieval, rerank, neighbor fetch, pipeline complete events from utils.rag  
+            **LLM** – Azure Phi-4 streaming + completion metrics (tokens, latency)  
+            **API** – Gmail, Calendar, Hugging Face calls logged via tools/google_tools.py and utils/rag.py  
+            **Database** – Supabase session/message CRUD operations from utils.database  
+            **MCP** – client + server tool call telemetry in agents/mcp.py  
+            **Security** – sanitize/injection logs from utils.security and content filter trips in utils.azure_llm.py  
+            **Agent** – UI interactions from components/assistants (email/meeting assistants)
             """)
 
         st.divider()
@@ -151,14 +150,14 @@ def show_observability_dashboard():
                     "Transport",
                     "Instrumented Modules",
                     "Event Categories",
-                    "Batch Processing"
+                    "Fallback / Resilience"
                 ],
                 "Status": [
-                    "Thread-safe async queue (10 events/batch, 5s flush)",
-                    "Splunk HEC with retry logic + fallback logging",
-                    "5 modules: mcp.py, google_tools.py, azure_llm.py, security.py, database.py",
-                    "5 types: API, Database, LLM, MCP, Security",
-                    "Audit logs batched (10/batch), neighbor chunks batched (single query)"
+                    "utils.splunk_logger.SplunkLogger (async queue, timed context helper)",
+                    "Splunk HEC (HTTPS + retry + TLS disable opt for Cloud trial)",
+                    "app.py, utils/rag.py, utils/azure_llm.py, utils/database.py, utils/security.py, tools/google_tools.py, agents/mcp.py, components/assistants.py",
+                    "Request, RAG, LLM, API, Database, MCP, Security, Agent UI",
+                    "Batch flush (10 events / 5s), fallback to logs/splunk_fallback.log on failure"
                 ]
             }
             df_impl = pd.DataFrame(impl_data)
@@ -176,18 +175,18 @@ def show_observability_dashboard():
             st.markdown("**Performance Optimizations**")
             perf_data = {
                 "Optimization": [
-                    "Session Cache",
-                    "Message Cache",
+                    "Session/Message Cache",
                     "Rerank Cache",
                     "Neighbor Batching",
-                    "Audit Batching"
+                    "MCP Metrics",
+                    "API Metadata"
                 ],
                 "Impact": [
-                    "2s TTL, eliminates duplicate session queries",
-                    "2s TTL, eliminates duplicate message queries",
-                    "LRU 100 entries, instant rerank on repeated queries",
-                    "Single HTTP request vs 20+ individual queries",
-                    "10 events/batch vs individual writes"
+                    "2s TTL caches cut duplicate Supabase reads",
+                    "LRU cache (100 entries) avoids duplicate cross-encoder work",
+                    "Single Supabase query fetches neighbor chunks instead of N round trips",
+                    "Client + server instrumentation exposes per-tool latency + success",
+                    "Each Gmail/Calendar call logs recipient, status, duration for audit"
                 ]
             }
             df_perf = pd.DataFrame(perf_data)
