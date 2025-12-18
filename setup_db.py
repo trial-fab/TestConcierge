@@ -116,12 +116,6 @@ def clean_text(s: str) -> str:
     return s.strip()
 
 def reflow_paragraphs(text: str) -> str:
-    """
-    - Keep real paragraph breaks (blank lines)
-    - Join hard-wrapped lines within a paragraph into one line
-    - Preserve bullet lines
-    - De-hyphenate soft wraps: immuniza-\ntion -> immunization
-    """
     text = re.sub(r"-\n(?=[a-z])", "", text)
     paras = PARA_BREAK.split(text)
     out: List[str] = []
@@ -150,7 +144,6 @@ def reflow_paragraphs(text: str) -> str:
     return "\n".join(out).strip()
 
 def group_faq_blocks(text: str) -> str:
-    """Keep each Q/A pair self-contained without merging unrelated blocks."""
     q_start = re.compile(r"^\s*(?:Q[:\-\)]|Question\b|How\b|What\b|When\b|Where\b|Why\b|Can\b|Do\b|Does\b|Is\b|Are\b)", re.I)
     a_mark = re.compile(r"^\s*A[:\-\)]\s*", re.I)
     lines = text.split("\n")
@@ -242,10 +235,6 @@ def recursive_chunks(text: str, chunk_size: int, overlap: int) -> List[str]:
     return out
 
 def glue_short_chunks(chunks: List[str], min_chars: int = 200) -> List[str]:
-    """
-    Merge very short chunks to avoid fragmentation.
-    Reduced from 300 to 200 to keep chunks closer to target size (700).
-    """
     if not chunks:
         return chunks
     out: List[str] = []
@@ -275,7 +264,6 @@ def _tail_snippet(text: str, target_chars: int) -> str:
 
 
 def l2_normalize(vec: List[float]) -> List[float]:
-    """Return a unit-length version of vec to keep embeddings comparable."""
     norm = math.sqrt(sum(x * x for x in vec))
     if norm == 0:
         return vec
@@ -283,16 +271,8 @@ def l2_normalize(vec: List[float]) -> List[float]:
 
 
 def _format_for_embedding(text: str, title: Optional[str]) -> str:
-    """
-    Return cleaned text for embedding (no title prefix, no URLs).
 
-    Strips URLs to reduce noise in embeddings while preserving semantic content.
-    URLs dilute embedding quality (seen 35-62% URL ratio in some chunks).
-
-    Note: URLs are preserved in stored chunk content for citations.
-    Only embedding text is cleaned.
-    """
-    # Strip URLs - they add noise but no semantic value
+    # Strip URLs
     # Keeps: "Visit HART online" but removes: "https://www.hart.org/..."
     cleaned = re.sub(r'https?://\S+', '', text)
     # Remove markdown link syntax that remains after URL removal
@@ -335,7 +315,6 @@ def embed_texts(texts: List[str], titles: Optional[List[str]] = None, batch: int
             if titles and (i + j) < len(titles):
                 title = titles[i + j]
             # Format chunk for embedding (strips URLs for cleaner embeddings)
-            # Original chunk text (with URLs) is preserved in 'subset' for storage
             formatted.append(_format_for_embedding(chunk, title))
         payload = {"inputs": formatted, "options": {"wait_for_model": True}}
         data = _hf_request(payload)

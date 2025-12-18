@@ -1,4 +1,3 @@
-"""UI rendering components for email and meeting assistants with improved UX."""
 import streamlit as st
 from datetime import date, datetime
 from utils.formatters import MEETING_TIMEZONE_OFFSETS, build_start_iso
@@ -9,7 +8,22 @@ from agents.email_assistant import (
     send_email_draft,
 )
 from agents.meeting_assistant import plan_meeting, create_meeting_event
+from utils.splunk_logger import get_splunk_logger
 
+logger = get_splunk_logger()
+
+def _log_assistant_event(assistant_type: str, action: str, extra: dict | None = None):
+    session_id = st.session_state.get("current_session_id")
+    payload = {"assistant_type": assistant_type, "action": action}
+    if extra:
+        payload.update(extra)
+    logger.log_event(
+        category="agent",
+        event_type="assistant_action",
+        payload=payload,
+        session_id=session_id,
+        component="ui",
+    )
 
 def render_tool_picker() -> None:
     """Render the tool picker with email and meeting assistant options."""
@@ -31,6 +45,7 @@ def render_tool_picker() -> None:
             st.session_state.show_email_builder = True
             st.session_state.show_meeting_builder = False
             st.session_state.show_tool_picker = False
+            _log_assistant_event("email", "open_picker")
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -40,15 +55,14 @@ def render_tool_picker() -> None:
             st.session_state.show_meeting_builder = True
             st.session_state.show_email_builder = False
             st.session_state.show_tool_picker = False
+            _log_assistant_event("meeting", "open_picker")
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
-
 
 def render_email_builder(mcp_client, db) -> None:
     """Render the email builder UI."""
     st.subheader("Email Assistant 🐂")
 
-    # Handle field resets
     if st.session_state.email_fields_reset_pending:
         st.session_state.email_to_input = ""
         st.session_state.email_subject_input = ""
@@ -64,34 +78,38 @@ def render_email_builder(mcp_client, db) -> None:
 
     # Show input form only if no draft exists
     if not pending:
-        # Sync subject from AI
         if st.session_state.email_subject_sync_value is not None:
             st.session_state.email_subject_input = st.session_state.email_subject_sync_value
             st.session_state.email_subject_sync_value = None
 
-        # Input fields
         st.text_input("Student Email", key="email_to_input")
         st.text_input("Subject", key="email_subject_input")
         st.text_area("Student Inquiry / Notes", key="email_student_message", height=120)
 
         col_generate, col_reset = st.columns([3, 1])
 
-        # Only show interactive buttons when NOT processing
         if not st.session_state.get("is_processing", False):
             if col_generate.button("Generate Draft", key="btn_email_generate", use_container_width=True):
-                # Two-phase: Phase 1 - set pending state and trigger rerun
                 st.session_state.pending_email_draft = {
                     "to": st.session_state.email_to_input,
                     "subject": st.session_state.email_subject_input,
                     "message": st.session_state.email_student_message,
                 }
+                _log_assistant_event(
+                    "email",
+                    "request_draft",
+                    {
+                        "recipient_provided": bool(st.session_state.email_to_input.strip()),
+                        "subject_provided": bool(st.session_state.email_subject_input.strip()),
+                    },
+                )
                 st.session_state.is_processing = True
-                # Close email builder to prevent grayed-out appearance
                 st.session_state.show_email_builder = False
                 st.rerun()
 
             if col_reset.button("Reset Fields", key="btn_email_reset", use_container_width=True):
                 st.session_state.email_fields_reset_pending = True
+                _log_assistant_event("email", "reset_fields")
                 st.rerun()
         else:
             col_generate.button("Generate Draft", key="btn_email_generate", use_container_width=True, disabled=True)
@@ -101,7 +119,6 @@ def render_email_builder(mcp_client, db) -> None:
 
     # Draft editor (only if draft exists)
     else:
-        # Sync draft from AI
         if st.session_state.email_draft_sync_value is not None:
             st.session_state.email_draft_text = st.session_state.email_draft_sync_value
             st.session_state.email_draft_sync_value = None
@@ -114,29 +131,34 @@ def render_email_builder(mcp_client, db) -> None:
 
         col1, col2, col3, col4 = st.columns(4)
 
-        # Only show interactive buttons when NOT processing
         if not st.session_state.get("is_processing", False):
             if col1.button("Apply AI Edit", key="btn_email_ai_edit"):
-                # Two-phase: Phase 1 - set pending state and trigger rerun
                 st.session_state.pending_email_edit = {
                     "instructions": st.session_state.email_edit_instructions,
                 }
+                _log_assistant_event(
+                    "email",
+                    "ai_edit_request",
+                    {"has_instructions": bool(st.session_state.email_edit_instructions.strip())},
+                )
                 st.session_state.is_processing = True
-                # Close email builder to prevent grayed-out appearance
                 st.session_state.show_email_builder = False
                 st.rerun()
 
             if col2.button("Save Manual Edit", key="btn_email_manual_edit"):
                 if save_manual_email_edit(st.session_state.email_draft_text):
                     st.success("Draft updated.")
+                    _log_assistant_event("email", "manual_edit_saved")
 
             if col3.button("Send Email", key="btn_email_send"):
                 send_email_draft(mcp_client, db)
+                _log_assistant_event("email", "send_draft")
                 st.rerun()
 
             if col4.button("Clear Draft", key="btn_email_clear"):
                 st.session_state.pending_email = None
                 st.session_state.email_draft_sync_value = ""
+                _log_assistant_event("email", "clear_draft")
                 st.rerun()
         else:
             col1.button("Apply AI Edit", key="btn_email_ai_edit", disabled=True)
@@ -149,7 +171,6 @@ def render_meeting_builder(mcp_client, db) -> None:
     """Render the meeting builder UI."""
     st.subheader("Meeting Assistant 🐂")
 
-    # Handle field resets
     if st.session_state.meeting_fields_reset_pending:
         st.session_state.meeting_summary_input = ""
         st.session_state.meeting_duration_input = 30
@@ -164,9 +185,7 @@ def render_meeting_builder(mcp_client, db) -> None:
 
     plan = st.session_state.pending_meeting
 
-    # Show input form only if no plan exists
     if not plan:
-        # Input fields
         st.text_input("Meeting Summary", key="meeting_summary_input")
 
         col_dt, col_tm = st.columns(2)
@@ -181,10 +200,8 @@ def render_meeting_builder(mcp_client, db) -> None:
 
         col_check, col_reset = st.columns([3, 1])
 
-        # Only show interactive buttons when NOT processing
         if not st.session_state.get("is_processing", False):
             if col_check.button("Check Availability / Update Plan", key="btn_meeting_plan", use_container_width=True):
-                # Two-phase: Phase 1 - set pending state and trigger rerun
                 start_iso = build_start_iso(
                     st.session_state.meeting_date_input,
                     st.session_state.meeting_time_input,
@@ -198,13 +215,21 @@ def render_meeting_builder(mcp_client, db) -> None:
                     "description": st.session_state.meeting_description_input,
                     "location": st.session_state.meeting_location_input,
                 }
+                _log_assistant_event(
+                    "meeting",
+                    "plan_request",
+                    {
+                        "duration": int(st.session_state.meeting_duration_input),
+                        "attendee_count": len([a.strip() for a in st.session_state.meeting_attendees_input.split(',') if a.strip()]),
+                    },
+                )
                 st.session_state.is_processing = True
-                # Close meeting builder to prevent grayed-out appearance
                 st.session_state.show_meeting_builder = False
                 st.rerun()
 
             if col_reset.button("Reset Fields", key="btn_meeting_reset", use_container_width=True):
                 st.session_state.meeting_fields_reset_pending = True
+                _log_assistant_event("meeting", "reset_fields")
                 st.rerun()
         else:
             col_check.button("Check Availability / Update Plan", key="btn_meeting_plan", use_container_width=True, disabled=True)
@@ -212,7 +237,6 @@ def render_meeting_builder(mcp_client, db) -> None:
 
         st.info("No meeting plan yet. Enter details above and click Check Availability.")
 
-    # Meeting plan display (only if plan exists)
     else:
         status = "✅ Slot is free" if plan.get("slot_free") else "⚠️ Slot is busy"
         st.info(status)
@@ -228,7 +252,6 @@ def render_meeting_builder(mcp_client, db) -> None:
         if plan.get("suggested"):
             st.caption(f"Suggested alternative: {plan['suggested']}")
 
-        # Sync meeting notes from AI
         if st.session_state.meeting_notes_sync_value is not None:
             st.session_state.meeting_notes_text = st.session_state.meeting_notes_sync_value
             st.session_state.meeting_notes_sync_value = None
@@ -238,15 +261,17 @@ def render_meeting_builder(mcp_client, db) -> None:
 
         col1, col2, col3, col4 = st.columns(4)
 
-        # Only show interactive buttons when NOT processing
         if not st.session_state.get("is_processing", False):
             if col1.button("Apply AI Edit", key="btn_meeting_ai_edit"):
-                # Two-phase: Phase 1 - set pending state and trigger rerun
                 st.session_state.pending_meeting_edit = {
                     "instructions": st.session_state.meeting_edit_instructions,
                 }
+                _log_assistant_event(
+                    "meeting",
+                    "ai_edit_request",
+                    {"has_instructions": bool(st.session_state.meeting_edit_instructions.strip())},
+                )
                 st.session_state.is_processing = True
-                # Close meeting builder to prevent grayed-out appearance
                 st.session_state.show_meeting_builder = False
                 st.rerun()
 
@@ -254,15 +279,17 @@ def render_meeting_builder(mcp_client, db) -> None:
                 from agents.meeting_assistant import save_manual_meeting_edit
                 if save_manual_meeting_edit(st.session_state.meeting_notes_text):
                     st.success("Meeting notes updated.")
+                    _log_assistant_event("meeting", "manual_edit_saved")
 
             if col3.button("Create Event", key="btn_meeting_create", use_container_width=True):
                 create_meeting_event(mcp_client, db)
+                _log_assistant_event("meeting", "create_event")
                 st.rerun()
 
             if col4.button("Clear Plan", key="btn_meeting_clear", use_container_width=True):
                 st.session_state.pending_meeting = None
-                # Don't modify widget keys directly - they'll be cleared when widget isn't rendered
                 st.session_state.meeting_notes_sync_value = None
+                _log_assistant_event("meeting", "clear_plan")
                 st.rerun()
         else:
             col1.button("Apply AI Edit", key="btn_meeting_ai_edit", disabled=True)

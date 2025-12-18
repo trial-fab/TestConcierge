@@ -1,4 +1,3 @@
-"""Date, time, and text formatting utilities."""
 import re
 from datetime import datetime
 from typing import Optional
@@ -8,17 +7,16 @@ UTC = ZoneInfo("UTC")
 EASTERN = ZoneInfo("America/New_York")
 
 MEETING_TIMEZONE_OFFSETS = {
-    "US/Eastern (EST)": "-04:00",  # EDT offset (daylight saving time)
-    "US/Central (CST)": "-05:00",  # CDT offset
-    "US/Mountain (MST)": "-06:00",  # MDT offset
-    "US/Pacific (PST)": "-07:00",  # PDT offset
+    "US/Eastern (EST)": "-04:00", 
+    "US/Central (CST)": "-05:00", 
+    "US/Mountain (MST)": "-06:00",  
+    "US/Pacific (PST)": "-07:00",  
 }
 
 _SUBJECT_PREFIX = re.compile(
     r"^\s*(?:\*\*|__|\*|_|\-)?\s*subject\s*(?:\*\*|__|\*|_)?\s*[:\-–—]\s*(.+)$",
     re.I,
 )
-
 
 def format_est_timestamp(raw: str | None) -> str:
     """Convert ISO timestamp to EST format like 'Jan 15, 03:45 PM EST'."""
@@ -43,7 +41,6 @@ def split_subject_from_body(text: str) -> tuple[Optional[str], str]:
     if not text:
         return None, ""
     lines = text.splitlines()
-    # Drop leading blank lines before looking for subject prefix
     while lines and not lines[0].strip():
         lines.pop(0)
     if not lines:
@@ -58,7 +55,6 @@ def split_subject_from_body(text: str) -> tuple[Optional[str], str]:
 
 def build_start_iso(selected_date, selected_time, tz_label: str) -> str:
     """Build ISO timestamp from date, time, and timezone label."""
-    # Default to EDT offset if timezone not found
     offset = MEETING_TIMEZONE_OFFSETS.get(tz_label, "-04:00")
     combined = datetime.combine(selected_date, selected_time)
     return combined.strftime("%Y-%m-%dT%H:%M") + offset

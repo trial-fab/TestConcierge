@@ -1,6 +1,8 @@
-## app.py - Streamlined main application
 import os
 from pathlib import Path
+
+from dotenv import load_dotenv
+load_dotenv()
 
 # Load config before importing Streamlit
 BASE_DIR = Path(__file__).resolve().parent
@@ -9,7 +11,8 @@ if CONFIG_PATH.exists():
     os.environ.setdefault("STREAMLIT_CONFIG_FILE", str(CONFIG_PATH))
 
 import streamlit as st
-from dotenv import load_dotenv
+import uuid
+import time
 
 # Prevent transformers from importing heavy backends
 os.environ.setdefault("USE_TF", "0")
@@ -17,14 +20,14 @@ os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
 os.environ.setdefault("TRANSFORMERS_NO_FLAX", "1")
 os.environ.setdefault("TRANSFORMERS_NO_JAX", "1")
 
-# Import utility modules
+# Import utility modules (AFTER load_dotenv())
 from utils.database import ChatDatabase
 from utils.rag import generate_with_rag, estimate_tokens
 from utils.security import sanitize_user_input, is_injection, AuthManager
 from agents.mcp import SimpleMCPClient
 from tools.google_tools import GoogleWorkspaceTools
 from utils.streaming import SmoothStreamer
-from utils.ui_helpers import inject_global_styles, scroll_chat_to_bottom
+from utils.ui_helpers import inject_global_styles
 from utils.state_manager import (
     initialize_session_state,
     handle_pending_action_collapses,
@@ -36,9 +39,8 @@ from components.assistants import (
     render_email_builder,
     render_meeting_builder,
 )
-
-# Load environment variables
-load_dotenv()
+from components.observability_dashboard import show_observability_dashboard
+from utils.splunk_logger import get_splunk_logger
 
 SESSION_TOKEN_LIMIT = int(os.environ.get("SESSION_TOKEN_LIMIT", "1500"))
 
@@ -46,6 +48,7 @@ SESSION_TOKEN_LIMIT = int(os.environ.get("SESSION_TOKEN_LIMIT", "1500"))
 db = ChatDatabase()
 google_tools = GoogleWorkspaceTools()
 mcp_client = SimpleMCPClient(chat_db=db, google_tools=google_tools)
+logger = get_splunk_logger()
 
 # Persist auth across reruns
 if "auth" not in st.session_state:
@@ -65,7 +68,6 @@ inject_global_styles()
 # Initialize session state
 initialize_session_state()
 
-
 def recompute_token_total(msgs: list[dict]) -> int:
     """Count only user+assistant tokens for the session budget."""
     return sum(
@@ -73,7 +75,6 @@ def recompute_token_total(msgs: list[dict]) -> int:
         for m in msgs
         if m.get("role") in ("user", "assistant")
     )
-
 
 # Handle pending login (after user submits login form)
 pending_login = st.session_state.get("pending_login")
@@ -87,6 +88,16 @@ if pending_login:
     st.session_state.username = username
     st.session_state.show_dashboard = True
     st.session_state.pending_login = None
+
+    # Log successful login
+    logger.log_event(
+        category="auth",
+        event_type="login_success",
+        payload={
+            "username": username,
+            "user_id": user_id
+        }
+    )
     st.rerun()
 
 # Reduce padding at bottom
@@ -165,6 +176,17 @@ if not st.session_state.authenticated:
                             }
                             st.rerun()
                         else:
+                            # Log failed login attempt
+                            logger.log_security_event(
+                                request_id="login_attempt",
+                                session_id="unauthenticated",
+                                event_type="login_failure",
+                                blocked=True,
+                                score=0.8,
+                                matched_rules=["invalid_credentials"],
+                                user_input_preview=login_username[:50],
+                                severity="warning"
+                            )
                             st.error("Invalid username or password")
 
             with tab2:
@@ -187,8 +209,26 @@ if not st.session_state.authenticated:
                             success, message = auth.create_user(reg_username, reg_password, reg_email)
 
                             if success:
+                                # Log successful registration
+                                logger.log_event(
+                                    category="auth",
+                                    event_type="registration_success",
+                                    payload={
+                                        "username": reg_username,
+                                        "has_email": bool(reg_email)
+                                    }
+                                )
                                 st.success("Account created! Please login.")
                             else:
+                                # Log registration failure
+                                logger.log_event(
+                                    category="auth",
+                                    event_type="registration_failure",
+                                    payload={
+                                        "username": reg_username,
+                                        "error_message": message
+                                    }
+                                )
                                 st.error(f"Registration failed: {message}")
 
     st.stop()
@@ -206,6 +246,16 @@ else:
         # Only render interactive sidebar elements when NOT processing
         if not st.session_state.is_processing:
             if st.button("🚪 Logout", use_container_width=True):
+                # Log logout before clearing session state
+                logger.log_event(
+                    category="auth",
+                    event_type="logout",
+                    payload={
+                        "username": st.session_state.username,
+                        "user_id": st.session_state.user_id
+                    },
+                    session_id=st.session_state.current_session_id
+                )
                 # Clear session state
                 st.session_state.authenticated = False
                 st.session_state.user_id = None
@@ -220,6 +270,13 @@ else:
             if st.button("🏠 Dashboard", use_container_width=True):
                 st.session_state.current_session_id = None
                 st.session_state.show_dashboard = True
+                st.session_state.show_observability = False
+                st.rerun()
+
+            if st.button("📊 Observability", use_container_width=True):
+                st.session_state.current_session_id = None
+                st.session_state.show_dashboard = False
+                st.session_state.show_observability = True
                 st.rerun()
 
             if st.button("➕ New Chat", use_container_width=True, type="primary"):
@@ -228,6 +285,11 @@ else:
                 sid = db.create_session(st.session_state.user_id, session_name)
                 if not sid:
                     st.error("Unable to create a new session. Please try again.")
+                    logger.log_event(
+                        category="session",
+                        event_type="session_create_error",
+                        payload={"user_id": st.session_state.user_id}
+                    )
                 else:
                     st.session_state.current_session_id = sid
                     st.session_state.messages = [
@@ -236,6 +298,16 @@ else:
                     st.session_state.token_total = 0
                     st.session_state.limit_reached = False
                     st.session_state.show_dashboard = False
+                    st.session_state.show_observability = False
+                    logger.log_event(
+                        category="session",
+                        event_type="session_created",
+                        payload={
+                            "session_name": session_name,
+                            "user_id": st.session_state.user_id
+                        },
+                        session_id=sid
+                    )
                     st.rerun()
 
             # Search
@@ -268,6 +340,8 @@ else:
                             ]
                             st.session_state.token_total = recompute_token_total(st.session_state.messages)
                             st.session_state.limit_reached = st.session_state.token_total >= SESSION_TOKEN_LIMIT
+                            st.session_state.show_dashboard = False
+                            st.session_state.show_observability = False
                             st.rerun()
             else:
                 st.info("No sessions found")
@@ -275,6 +349,7 @@ else:
             # Show disabled buttons when processing
             st.button("🚪 Logout", use_container_width=True, disabled=True)
             st.button("🏠 Dashboard", use_container_width=True, disabled=True)
+            st.button("📊 Observability", use_container_width=True, disabled=True)
             st.button("➕ New Chat", use_container_width=True, type="primary", disabled=True)
             st.text_input("🔍 Search sessions", key="search_input_disabled", disabled=True)
 
@@ -424,12 +499,16 @@ else:
 
         with chat_col:
             history = st.session_state.messages[1:]
+            assistants_open = (
+                st.session_state.show_tool_picker
+                or st.session_state.show_email_builder
+                or st.session_state.show_meeting_builder
+            )
             show_welcome = (
                 not history
-                and not st.session_state.show_tool_picker
-                and not st.session_state.show_email_builder
-                and not st.session_state.show_meeting_builder
-                and not st.session_state.recent_actions
+                and not assistants_open
+                and not st.session_state.get("pending_user_input")
+                and not st.session_state.is_processing
             )
             if show_welcome:
                 st.markdown(
@@ -472,15 +551,9 @@ else:
                 with st.chat_message("assistant"):
                     render_meeting_builder(mcp_client, db)
 
-        scroll_chat_to_bottom()
-
         # Input area
         # Button shows × if tool picker OR any assistant is open
-        any_assistant_open = (
-            st.session_state.show_tool_picker
-            or st.session_state.show_email_builder
-            or st.session_state.show_meeting_builder
-        )
+        any_assistant_open = assistants_open
         tool_button_label = "×" if any_assistant_open else "＋"
         toggle_col, input_col = st.columns([0.03, 0.97], gap=None)  # No gap in columns
 
@@ -557,19 +630,34 @@ else:
                 # Only render interactive chat input when NOT processing
                 user_input = st.chat_input("Ask the USF Campus Concierge...")
 
-        # Handle regeneration request - TWO PHASE APPROACH
-        # Phase 1: Button clicked → set flag and rerun (UI updates instantly)
+
         if st.session_state.pending_regen and not st.session_state.is_processing:
             if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
                 st.session_state.is_processing = True
-                st.rerun()  # Critical: rerun NOW to update UI before processing
+                st.session_state.current_request_id = str(uuid.uuid4())
+                st.session_state.request_start_time = time.time()
+                st.rerun()
 
-        # Phase 2: Process regeneration (UI already showing disabled state)
         if st.session_state.is_processing and st.session_state.pending_regen:
             handle_pending_action_collapses()
 
+            request_id = st.session_state.get("current_request_id") or str(uuid.uuid4())
+            request_start_time = st.session_state.get("request_start_time") or time.time()
             clean = st.session_state.messages[-1]["content"]
             in_toks = estimate_tokens(clean)
+            logger.log_event(
+                category="request",
+                event_type="request_start",
+                payload={
+                    "user_input_length": len(clean),
+                    "session_message_count": len(st.session_state.messages),
+                    "tokens_in": in_toks,
+                    "user_id": st.session_state.user_id,
+                    "is_regenerate": True,
+                },
+                request_id=request_id,
+                session_id=st.session_state.current_session_id,
+            )
 
             with chat_col:
                 with st.chat_message("assistant"):
@@ -586,6 +674,19 @@ else:
                 st.session_state.messages.append({"role": "assistant", "content": warn})
                 db.add_message(st.session_state.current_session_id, "assistant", warn, tokens_out=out_toks)
                 mcp_client.log_interaction(st.session_state.current_session_id, "injection_blocked", {"prompt": clean, "response": warn})
+                logger.log_event(
+                    category="request",
+                    event_type="request_blocked",
+                    payload={
+                        "tokens_in": in_toks,
+                        "tokens_out": out_toks,
+                        "reason": "prompt_injection",
+                        "is_regenerate": True,
+                    },
+                    request_id=request_id,
+                    session_id=st.session_state.current_session_id,
+                    metrics={"duration_ms": (time.time() - request_start_time) * 1000},
+                )
             else:
                 # Generate new response
                 try:
@@ -619,6 +720,23 @@ else:
                             "regenerate_response",
                             {"prompt": clean, "response": final_text, "chunks": matched_chunks, "tokens_in": in_toks, "tokens_out": out_toks}
                         )
+
+                        logger.log_event(
+                            category="request",
+                            event_type="request_complete",
+                            payload={
+                                "tokens_in": in_toks,
+                                "tokens_out": out_toks,
+                                "response_length": len(final_text),
+                                "chunks_matched": len(matched_chunks),
+                                "is_regenerate": True,
+                                "user_id": st.session_state.user_id
+                            },
+                            request_id=request_id,
+                            session_id=st.session_state.current_session_id,
+                            metrics={"duration_ms": (time.time() - request_start_time) * 1000},
+                        )
+
                         maybe_auto_open_assistant(final_text)
                     else:
                         error_msg = "We weren't able to generate a response. Please try again."
@@ -626,6 +744,17 @@ else:
                         st.session_state.messages.append({"role": "assistant", "content": error_msg})
                         db.add_message(st.session_state.current_session_id, "assistant", error_msg, tokens_out=estimate_tokens(error_msg))
                         mcp_client.log_interaction(st.session_state.current_session_id, "assistant_error", {"prompt": clean, "error": "empty_response"})
+                        logger.log_event(
+                            category="request",
+                            event_type="request_error",
+                            payload={
+                                "error_message": error_msg,
+                                "is_regenerate": True,
+                            },
+                            request_id=request_id,
+                            session_id=st.session_state.current_session_id,
+                            metrics={"duration_ms": (time.time() - request_start_time) * 1000},
+                        )
                 except RuntimeError as e:
                     # Catch content filter blocks and other Azure errors
                     error_msg = str(e)
@@ -637,13 +766,42 @@ else:
                     db.add_message(st.session_state.current_session_id, "assistant", error_msg, tokens_out=out_toks)
                     mcp_client.log_interaction(st.session_state.current_session_id, "content_filter_block", {"prompt": clean, "error": error_msg})
 
+                    # Log structured error event to Splunk
+                    logger.log_event(
+                        category="error",
+                        event_type="runtime_error",
+                        payload={
+                            "error_type": "RuntimeError",
+                            "error_message": error_msg,
+                            "component": "chat_interface",
+                            "user_input": clean[:200],  # Truncate for privacy
+                            "tokens_in": in_toks,
+                            "tokens_out": out_toks,
+                            "is_regenerate": True,
+                            "error_category": "content_filter" if "content" in error_msg.lower() else "azure_llm_error"
+                        },
+                        request_id=request_id,
+                        session_id=st.session_state.current_session_id
+                    )
+                    logger.log_event(
+                        category="request",
+                        event_type="request_error",
+                        payload={
+                            "error_message": error_msg,
+                            "is_regenerate": True,
+                        },
+                        request_id=request_id,
+                        session_id=st.session_state.current_session_id,
+                        metrics={"duration_ms": (time.time() - request_start_time) * 1000},
+                    )
+
             # Clear regeneration state
             st.session_state.pending_regen = False
+            st.session_state.current_request_id = None
+            st.session_state.request_start_time = None
             st.session_state.is_processing = False
             st.rerun()
 
-        # Handle email draft generation - TWO PHASE APPROACH
-        # Phase 2: Process the pending email draft
         if st.session_state.is_processing and st.session_state.get("pending_email_draft"):
             from agents.email_assistant import start_email_draft
             params = st.session_state.pending_email_draft
@@ -658,8 +816,6 @@ else:
             st.session_state.show_email_builder = True  # Reopen assistant after processing
             st.rerun()
 
-        # Handle email AI edit - TWO PHASE APPROACH
-        # Phase 2: Process the pending email edit
         if st.session_state.is_processing and st.session_state.get("pending_email_edit"):
             from agents.email_assistant import apply_email_edit
             params = st.session_state.pending_email_edit
@@ -674,8 +830,6 @@ else:
             st.session_state.show_email_builder = True  # Reopen assistant after processing
             st.rerun()
 
-        # Handle meeting planning - TWO PHASE APPROACH
-        # Phase 2: Process the pending meeting plan
         if st.session_state.is_processing and st.session_state.get("pending_meeting_plan"):
             from agents.meeting_assistant import plan_meeting
 
@@ -698,8 +852,6 @@ else:
             st.session_state.show_meeting_builder = True  # Reopen assistant after processing
             st.rerun()
 
-        # Handle meeting AI edit - TWO PHASE APPROACH
-        # Phase 2: Process the pending meeting edit
         if st.session_state.is_processing and st.session_state.get("pending_meeting_edit"):
             from agents.meeting_assistant import apply_meeting_edit
             params = st.session_state.pending_meeting_edit
@@ -714,8 +866,6 @@ else:
             st.session_state.show_meeting_builder = True  # Reopen assistant after processing
             st.rerun()
 
-        # Handle user input - TWO PHASE APPROACH
-        # Phase 1: User submits → set flag and rerun (UI updates instantly)
         if user_input and not st.session_state.is_processing:
             st.session_state.pending_user_input = user_input
             st.session_state.is_processing = True
@@ -725,14 +875,34 @@ else:
             st.session_state.show_meeting_builder = False
             st.session_state.pending_email = None
             st.session_state.pending_meeting = None
-            st.rerun()  # Critical: rerun NOW to update UI before processing
+            st.rerun() 
 
-        # Phase 2: Process the pending input (UI already showing disabled state)
         if st.session_state.is_processing and st.session_state.get("pending_user_input"):
             handle_pending_action_collapses()
 
+            # Generate request_id for tracking this request
+            request_id = str(uuid.uuid4())
+            request_start_time = time.time()
+            st.session_state.current_request_id = request_id
+            st.session_state.request_start_time = request_start_time
+
             clean = sanitize_user_input(st.session_state.pending_user_input)
             in_toks = estimate_tokens(clean)
+
+            # Log request start
+            logger.log_event(
+                category="request",
+                event_type="request_start",
+                payload={
+                    "user_input_length": len(clean),
+                    "session_message_count": len(st.session_state.messages),
+                    "tokens_in": in_toks,
+                    "user_id": st.session_state.user_id,
+                    "is_regenerate": False,
+                },
+                request_id=request_id,
+                session_id=st.session_state.current_session_id
+            )
 
             # Add user message
             st.session_state.messages.append({"role": "user", "content": clean})
@@ -789,6 +959,24 @@ else:
                             "assistant_reply",
                             {"prompt": clean, "response": final_text, "chunks": matched_chunks, "tokens_in": in_toks, "tokens_out": out_toks}
                         )
+
+                        # Log request completion
+                        logger.log_event(
+                            category="request",
+                            event_type="request_complete",
+                            payload={
+                                "tokens_in": in_toks,
+                                "tokens_out": out_toks,
+                                "response_length": len(final_text),
+                                "chunks_matched": len(matched_chunks),
+                                "is_regenerate": False,
+                                "user_id": st.session_state.user_id
+                            },
+                            request_id=request_id,
+                            session_id=st.session_state.current_session_id,
+                            metrics={"duration_ms": (time.time() - request_start_time) * 1000},
+                        )
+
                         maybe_auto_open_assistant(final_text)
                     else:
                         error_msg = "We weren't able to generate a response. Please try again."
@@ -807,101 +995,136 @@ else:
                     db.add_message(st.session_state.current_session_id, "assistant", error_msg, tokens_out=out_toks)
                     mcp_client.log_interaction(st.session_state.current_session_id, "content_filter_block", {"prompt": clean, "error": error_msg})
 
+                    # Log structured error event to Splunk
+                    logger.log_event(
+                        category="error",
+                        event_type="runtime_error",
+                        payload={
+                            "error_type": "RuntimeError",
+                            "error_message": error_msg,
+                            "component": "chat_interface",
+                            "user_input": clean[:200],  # Truncate for privacy
+                            "tokens_in": in_toks,
+                            "tokens_out": out_toks,
+                            "is_user_input": True,
+                            "error_category": "content_filter" if "content" in error_msg.lower() else "azure_llm_error"
+                        },
+                        request_id=request_id,
+                        session_id=st.session_state.current_session_id
+                    )
+                    logger.log_event(
+                        category="request",
+                        event_type="request_error",
+                        payload={
+                            "error_message": error_msg,
+                            "is_regenerate": False,
+                        },
+                        request_id=request_id,
+                        session_id=st.session_state.current_session_id,
+                        metrics={"duration_ms": (time.time() - request_start_time) * 1000},
+                    )
+
             # Clear processing state
             st.session_state.pending_user_input = None
             st.session_state.is_processing = False
+            st.session_state.current_request_id = None
+            st.session_state.request_start_time = None
             st.rerun()
 
     else:
-        # Dashboard
-        st.title("🐂 Welcome to USF Campus Concierge")
-        st.markdown("### AI Assistant for Registration, Orientation, & Admissions")
-
-        st.divider()
-
-        handle_pending_action_collapses()
-
-        # Stats
-        sessions = db.get_user_sessions(st.session_state.user_id)
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.metric("📁 Total Sessions", len(sessions))
-
-        with col2:
-            # Optimized: Single query instead of N queries
-            total_messages = db.get_total_message_count(st.session_state.user_id)
-            st.metric("💬 Total Messages", total_messages)
-
-        st.divider()
-
-        # Recent sessions
-        if st.session_state.get("show_dashboard", True):
-            st.subheader("📌 Recent Sessions")
-
-            if sessions:
-                for session in sessions[:5]:
-                    session_id = session.get("id")
-                    messages = db.get_session_messages(session_id)
-                    msg_count = len(messages)
-                    created_label = format_est_timestamp(session.get("created_at"))
-                    updated_label = format_est_timestamp(session.get("updated_at"))
-                    header = f"💬 {session['session_name']}"
-                    with st.expander(header, expanded=False):
-                        st.markdown(
-                            f"**Created:** {created_label}  \n"
-                            f"**Updated:** {updated_label}  \n"
-                            f"**Messages:** {msg_count}"
-                        )
-
-                        if st.button("Open", key=f"open_{session_id}"):
-                            st.session_state.current_session_id = session_id
-                            st.session_state.messages = [
-                                {"role": "system", "content": "Assistant configured."}
-                            ] + [
-                                {"role": msg["role"], "content": msg["content"]}
-                                for msg in messages
-                            ]
-                            st.session_state.token_total = recompute_token_total(st.session_state.messages)
-                            st.session_state.limit_reached = st.session_state.token_total >= SESSION_TOKEN_LIMIT
-                            st.session_state.show_dashboard = False
-                            st.rerun()
-            else:
-                st.info("👈 Create your first session to start chatting!")
-
-            if st.session_state.recent_actions:
-                st.subheader("📝 Recent Assisted Actions")
-                for idx, action in enumerate(st.session_state.recent_actions):
-                    data = action.get("data", {})
-                    timestamp_label = format_est_timestamp(action.get("timestamp"))
-                    if action.get("type") == "email":
-                        label = f"Email to {data.get('to', '(unknown)')} • {timestamp_label}"
-                    else:
-                        label = f"Meeting: {data.get('summary', 'Untitled')} • {timestamp_label}"
-
-                    with st.expander(label, expanded=False):
-                        if action.get("type") == "email":
-                            st.write(f"**Subject:** {data.get('subject', '(no subject)')}")
-                            st.write(f"**Message ID:** {data.get('message_id', 'pending')}")
-                            st.text_area(
-                                "Email Body",
-                                data.get("body") or "",
-                                height=150,
-                                disabled=True,
-                                key=f"email_log_dash_{idx}",
-                            )
-                        else:
-                            attendees = ", ".join(data.get("attendees", [])) or "None provided"
-                            duration_display = f"{data.get('duration')} min" if data.get("duration") else "N/A"
-                            st.write(f"**When:** {format_est_timestamp(data.get('start'))} ({duration_display})")
-                            st.write(f"**Attendees:** {attendees}")
-                            st.write(f"**Location:** {data.get('location') or 'TBD'}")
-                            st.write(f"**Event ID:** {data.get('event_id', 'pending')}")
-                            st.write(f"**Calendar Summary:** {data.get('summary', 'Meeting')}")
-                            if data.get("ai_notes"):
-                                st.caption(data["ai_notes"])
-                            if data.get("meeting_link"):
-                                st.write(f"**Meet Link:** {data.get('meeting_link')}")
+        # Check if observability dashboard should be shown
+        if st.session_state.get("show_observability", False):
+            show_observability_dashboard()
         else:
-            st.info("Use the sidebar to return to your dashboard and see recent sessions/actions.")
+            # Normal Dashboard
+            st.title("🐂 Welcome to USF Campus Concierge")
+            st.markdown("### AI Assistant for Registration, Orientation, & Admissions")
+
+            st.divider()
+
+            handle_pending_action_collapses()
+
+            # Stats
+            sessions = db.get_user_sessions(st.session_state.user_id)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.metric("📁 Total Sessions", len(sessions))
+
+            with col2:
+                total_messages = db.get_total_message_count(st.session_state.user_id)
+                st.metric("💬 Total Messages", total_messages)
+
+            st.divider()
+
+            # Recent sessions
+            if st.session_state.get("show_dashboard", True):
+                st.subheader("📌 Recent Sessions")
+
+                if sessions:
+                    for session in sessions[:5]:
+                        session_id = session.get("id")
+                        messages = db.get_session_messages(session_id)
+                        msg_count = len(messages)
+                        created_label = format_est_timestamp(session.get("created_at"))
+                        updated_label = format_est_timestamp(session.get("updated_at"))
+                        header = f"💬 {session['session_name']}"
+                        with st.expander(header, expanded=False):
+                            st.markdown(
+                                f"**Created:** {created_label}  \n"
+                                f"**Updated:** {updated_label}  \n"
+                                f"**Messages:** {msg_count}"
+                            )
+
+                            if st.button("Open", key=f"open_{session_id}"):
+                                st.session_state.current_session_id = session_id
+                                st.session_state.messages = [
+                                    {"role": "system", "content": "Assistant configured."}
+                                ] + [
+                                    {"role": msg["role"], "content": msg["content"]}
+                                    for msg in messages
+                                ]
+                                st.session_state.token_total = recompute_token_total(st.session_state.messages)
+                                st.session_state.limit_reached = st.session_state.token_total >= SESSION_TOKEN_LIMIT
+                                st.session_state.show_dashboard = False
+                                st.session_state.show_observability = False
+                                st.rerun()
+                else:
+                    st.info("👈 Create your first session to start chatting!")
+
+                if st.session_state.recent_actions:
+                    st.subheader("📝 Recent Assisted Actions")
+                    for idx, action in enumerate(st.session_state.recent_actions):
+                        data = action.get("data", {})
+                        timestamp_label = format_est_timestamp(action.get("timestamp"))
+                        if action.get("type") == "email":
+                            label = f"Email to {data.get('to', '(unknown)')} • {timestamp_label}"
+                        else:
+                            label = f"Meeting: {data.get('summary', 'Untitled')} • {timestamp_label}"
+
+                        with st.expander(label, expanded=False):
+                            if action.get("type") == "email":
+                                st.write(f"**Subject:** {data.get('subject', '(no subject)')}")
+                                st.write(f"**Message ID:** {data.get('message_id', 'pending')}")
+                                st.text_area(
+                                    "Email Body",
+                                    data.get("body") or "",
+                                    height=150,
+                                    disabled=True,
+                                    key=f"email_log_dash_{idx}",
+                                )
+                            else:
+                                attendees = ", ".join(data.get("attendees", [])) or "None provided"
+                                duration_display = f"{data.get('duration')} min" if data.get("duration") else "N/A"
+                                st.write(f"**When:** {format_est_timestamp(data.get('start'))} ({duration_display})")
+                                st.write(f"**Attendees:** {attendees}")
+                                st.write(f"**Location:** {data.get('location') or 'TBD'}")
+                                st.write(f"**Event ID:** {data.get('event_id', 'pending')}")
+                                st.write(f"**Calendar Summary:** {data.get('summary', 'Meeting')}")
+                                if data.get("ai_notes"):
+                                    st.caption(data["ai_notes"])
+                                if data.get("meeting_link"):
+                                    st.write(f"**Meet Link:** {data.get('meeting_link')}")
+            else:
+                st.info("Use the sidebar to return to your dashboard and see recent sessions/actions.")

@@ -5,13 +5,16 @@ import logging
 import os
 import re
 import sys
+import time
+import traceback
+import uuid
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
 try:
-    import anyio  
-except ImportError:  
-    anyio = None  
+    import anyio
+except ImportError:
+    anyio = None
 
 from dotenv import load_dotenv
 
@@ -20,8 +23,9 @@ from tools.google_tools import GoogleWorkspaceTools
 from utils.rag import retrieve_matches, format_context, build_sources_block
 from utils.azure_llm import complete_chat
 from utils.formatters import split_subject_from_body
+from utils.splunk_logger import get_splunk_logger
 
-try: 
+try:
     import mcp.types as mcp_types
     from mcp.client.session import ClientSession
     from mcp.client.stdio import StdioServerParameters, stdio_client
@@ -29,14 +33,14 @@ try:
     from mcp.server.stdio import stdio_server as mcp_stdio_server
 
     MCP_AVAILABLE = True
-except ImportError:  
-    mcp_types = None  
-    ClientSession = None  
-    StdioServerParameters = None  
-    stdio_client = None  
-    NotificationOptions = None  
-    Server = None  
-    mcp_stdio_server = None  
+except ImportError:
+    mcp_types = None
+    ClientSession = None
+    StdioServerParameters = None
+    stdio_client = None
+    NotificationOptions = None
+    Server = None
+    mcp_stdio_server = None
     MCP_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -59,7 +63,6 @@ def _require_env(name: str) -> str:
     if not value:
         raise RuntimeError(f"Missing required environment variable: {name}")
     return value
-
 
 EMAIL_SYSTEM_PROMPT = _require_env("EMAIL_SYSTEM_PROMPT")
 MEETING_SYSTEM_PROMPT = _require_env("MEETING_SYSTEM_PROMPT")
@@ -94,7 +97,8 @@ class _ToolRuntime:
     ) -> list[dict[str, Any]]:
         if not query:
             raise ValueError("query is required")
-        return retrieve_matches(query, match_count=match_count, extra_filter=extra_filter)
+        result = retrieve_matches(query, match_count=match_count, extra_filter=extra_filter)
+        return result
 
     # Audit helpers
     def log_interaction(self, session_id: str, event_type: str, payload: dict[str, Any]) -> dict[str, str]:
@@ -161,13 +165,14 @@ class _ToolRuntime:
             messages,
             temperature=0.25,
             deployment_name="AZURE_PHI4_EMAIL",
+            session_id=session_id,
         ).strip()
         extracted_subject, cleaned_body = split_subject_from_body(body)
         if extracted_subject:
             subject_line = extracted_subject
             body = cleaned_body
         sources = build_sources_block(hits)
-        # Keep body and sources separate - sources shown in chat but not in draft box
+
         draft = {
             "subject": subject_line,
             "body": body,
@@ -235,6 +240,7 @@ class _ToolRuntime:
             messages,
             temperature=0.2,
             deployment_name="AZURE_PHI4_MEETING",
+            session_id=session_id,
         ).strip()
         plan = {
             "summary": summary_clean,
@@ -499,86 +505,103 @@ async def _run_blocking(func, *args, **kwargs):
     return await anyio.to_thread.run_sync(func, *args, **kwargs)
 
 async def _execute_tool(runtime: _ToolRuntime, tool_name: str, args: dict[str, Any]):
-    if tool_name == "retrieve_context":
-        hits = await _run_blocking(
-            runtime.retrieve_context,
-            args.get("query"),
-            args.get("match_count"),
-            args.get("extra_filter"),
+    start = time.perf_counter()
+    success = False
+    error_msg = None
+    result: Any = None
+    try:
+        if tool_name == "retrieve_context":
+            hits = await _run_blocking(
+                runtime.retrieve_context,
+                args.get("query"),
+                args.get("match_count"),
+                args.get("extra_filter"),
+            )
+            result = {"hits": hits}
+        elif tool_name == "log_interaction":
+            result = await _run_blocking(
+                runtime.log_interaction,
+                args.get("session_id", ""),
+                args.get("event_type", ""),
+                args.get("payload") or {},
+            )
+        elif tool_name == "list_calendar_events":
+            events = await _run_blocking(runtime.list_calendar_events, args.get("max_results", 5))
+            result = {"events": events}
+        elif tool_name == "list_recent_emails":
+            messages = await _run_blocking(
+                runtime.list_recent_emails,
+                args.get("query", ""),
+                args.get("max_results", 5),
+            )
+            result = {"messages": messages}
+        elif tool_name == "send_email":
+            message_id = await _run_blocking(
+                runtime.send_email,
+                args.get("to_address", ""),
+                args.get("subject", ""),
+                args.get("body", ""),
+            )
+            result = {"message_id": message_id}
+        elif tool_name == "draft_email":
+            draft = await _run_blocking(
+                runtime.draft_email,
+                args.get("student_message", ""),
+                args.get("subject"),
+                args.get("instructions"),
+                args.get("previous_draft"),
+                args.get("session_id"),
+            )
+            result = {"draft": draft}
+        elif tool_name == "plan_meeting":
+            plan = await _run_blocking(
+                runtime.plan_meeting,
+                args.get("summary", ""),
+                args.get("start_iso", ""),
+                int(args.get("duration_minutes", 30)),
+                args.get("attendees"),
+                args.get("agenda", ""),
+                args.get("location", ""),
+                args.get("session_id"),
+            )
+            result = {"plan": plan}
+        elif tool_name == "create_event":
+            event_info = await _run_blocking(
+                runtime.create_event,
+                args.get("summary", ""),
+                args.get("start_iso", ""),
+                int(args.get("duration_minutes", 30)),
+                args.get("attendees"),
+                args.get("description", ""),
+                args.get("location", ""),
+            )
+            if isinstance(event_info, dict):
+                result = {
+                    "event_id": event_info.get("event_id", ""),
+                    "hangout_link": event_info.get("hangout_link", ""),
+                }
+            else:
+                result = {"event_id": event_info or "", "hangout_link": ""}
+        else:
+            raise ValueError(f"Unknown tool: {tool_name}")
+        success = True
+        return result
+    except Exception as exc:
+        error_msg = str(exc)
+        raise
+    finally:
+        duration_ms = (time.perf_counter() - start) * 1000
+        get_splunk_logger().log_event(
+            category="mcp",
+            event_type="server_tool",
+            payload={
+                "tool_name": tool_name,
+                "success": success,
+                "error": error_msg,
+            },
+            metrics={"duration_ms": duration_ms},
+            component="mcp_server",
         )
-        return {"hits": hits}
-
-    if tool_name == "log_interaction":
-        return await _run_blocking(
-            runtime.log_interaction,
-            args.get("session_id", ""),
-            args.get("event_type", ""),
-            args.get("payload") or {},
-        )
-
-    if tool_name == "list_calendar_events":
-        events = await _run_blocking(runtime.list_calendar_events, args.get("max_results", 5))
-        return {"events": events}
-
-    if tool_name == "list_recent_emails":
-        messages = await _run_blocking(
-            runtime.list_recent_emails,
-            args.get("query", ""),
-            args.get("max_results", 5),
-        )
-        return {"messages": messages}
-
-    if tool_name == "send_email":
-        message_id = await _run_blocking(
-            runtime.send_email,
-            args.get("to_address", ""),
-            args.get("subject", ""),
-            args.get("body", ""),
-        )
-        return {"message_id": message_id}
-
-    if tool_name == "draft_email":
-        draft = await _run_blocking(
-            runtime.draft_email,
-            args.get("student_message", ""),
-            args.get("subject"),
-            args.get("instructions"),
-            args.get("previous_draft"),
-            args.get("session_id"),
-        )
-        return {"draft": draft}
-
-    if tool_name == "plan_meeting":
-        plan = await _run_blocking(
-            runtime.plan_meeting,
-            args.get("summary", ""),
-            args.get("start_iso", ""),
-            int(args.get("duration_minutes", 30)),
-            args.get("attendees"),
-            args.get("agenda", ""),
-            args.get("location", ""),
-            args.get("session_id"),
-        )
-        return {"plan": plan}
-
-    if tool_name == "create_event":
-        event_info = await _run_blocking(
-            runtime.create_event,
-            args.get("summary", ""),
-            args.get("start_iso", ""),
-            int(args.get("duration_minutes", 30)),
-            args.get("attendees"),
-            args.get("description", ""),
-            args.get("location", ""),
-        )
-        if isinstance(event_info, dict):
-            return {
-                "event_id": event_info.get("event_id", ""),
-                "hangout_link": event_info.get("hangout_link", ""),
-            }
-        return {"event_id": event_info or "", "hangout_link": ""}
-
-    raise ValueError(f"Unknown tool: {tool_name}")
 
 async def run_mcp_server(
     chat_db: Optional[ChatDatabase] = None,
@@ -635,6 +658,9 @@ class SimpleMCPClient:
             cwd=str(self._server_cwd),
         )
 
+        # Initialize Splunk logger for MCP tool call tracking
+        self._splunk_logger = get_splunk_logger()
+
     def _call_tool(self, tool_name: str, arguments: dict[str, Any], timeout: float = 120.0):
         """
         Call MCP tool via stdio transport.
@@ -643,15 +669,21 @@ class SimpleMCPClient:
         if not self._stdio_params:
             raise RuntimeError("MCP transport has not been initialised.")
 
+        # Extract session_id from arguments for logging (if available)
+        session_id = arguments.get("session_id", "unknown")
+        request_id = str(uuid.uuid4())
+        start_time = time.perf_counter()
+        error_message = None
+        error_type = None
+        error_traceback = None
+        success = True
+
         async def _call():
-            # Create session for this call (subprocess reused if warm)
             try:
                 with anyio.fail_after(timeout):
                     async with stdio_client(self._stdio_params) as (read_stream, write_stream):
                         async with ClientSession(read_stream, write_stream) as session:
-                            # Initialize MCP protocol
                             await session.initialize()
-                            # Call tool directly (skip list_tools for speed)
                             return await session.call_tool(tool_name, arguments)
             except TimeoutError as exc:
                 raise RuntimeError(
@@ -659,10 +691,58 @@ class SimpleMCPClient:
                     "The subprocess may be unresponsive or stuck."
                 ) from exc
 
-        result = anyio.run(_call)
-        if result.isError:
-            raise RuntimeError(_extract_error(result))
-        return result
+        try:
+            result = anyio.run(_call)
+            if result.isError:
+                success = False
+                error_message = _extract_error(result)
+                error_type = "tool_error"
+                raise RuntimeError(error_message)
+            return result
+        except TimeoutError as e:
+            success = False
+            error_message = str(e)
+            error_type = "timeout"
+            error_traceback = traceback.format_exc()
+            raise
+        except RuntimeError as e:
+            success = False
+            error_message = str(e)
+            if "timed out" in error_message.lower():
+                error_type = "timeout"
+            else:
+                error_type = "runtime_error"
+            error_traceback = traceback.format_exc()
+            raise
+        except Exception as e:
+            success = False
+            error_message = str(e)
+            error_type = type(e).__name__
+            error_traceback = traceback.format_exc()
+            raise
+        finally:
+            duration_ms = (time.perf_counter() - start_time) * 1000
+
+            payload = {
+                "timeout": timeout,
+                "arguments_keys": list(arguments.keys()) if arguments else [],
+                "subprocess_command": " ".join(self._server_command)
+            }
+
+            if not success:
+                payload["error_type"] = error_type
+                if error_traceback:
+                    payload["error_traceback"] = error_traceback[-2000:]
+
+            self._splunk_logger.log_mcp_tool_call(
+                request_id=request_id,
+                session_id=session_id,
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                success=success,
+                error_message=error_message,
+                payload=payload
+            )
 
     @staticmethod
     def _structured(result, key: str, default: Any):
@@ -670,7 +750,6 @@ class SimpleMCPClient:
         data = result.structuredContent or {}
         return data.get(key, default)
 
-    # Public API - all methods use real MCP protocol via persistent session
     def retrieve_context(
         self,
         query: str,
@@ -696,7 +775,6 @@ class SimpleMCPClient:
         if not session_id or not event_type:
             return
         try:
-            # Direct database call - no MCP subprocess needed for simple logging
             self._runtime.log_interaction(session_id, event_type, payload)
         except Exception as exc:
             logger.warning("log_interaction failed: %s", exc)
@@ -815,5 +893,5 @@ def _main() -> None:
             parser.error("The `anyio` package is required to run the MCP server.")
         anyio.run(run_mcp_server)
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     _main()

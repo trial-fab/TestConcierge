@@ -1,12 +1,7 @@
-"""Improved streaming text renderer for smooth word-by-word output."""
 import time as time_module
 
 
 class SmoothStreamer:
-    """
-    Buffers model deltas and renders them word-by-word for a smooth streaming experience.
-    Optimized for fast, responsive output similar to Claude Code.
-    """
 
     def __init__(
         self,
@@ -29,7 +24,6 @@ class SmoothStreamer:
         self._word_buffer = 0
 
     def update(self, text: str | None) -> None:
-        """Update with new text delta from the model."""
         if not text:
             return
         if text == self._latest:
@@ -54,10 +48,6 @@ class SmoothStreamer:
         new_words = self._count_words(delta)
         self._word_buffer += new_words
 
-        # Render conditions (optimized for speed):
-        # 1. Accumulated enough words
-        # 2. New content is substantial
-        # 3. Time threshold exceeded (prevent lag)
         should_render = (
             self._word_buffer >= self._word_threshold
             or len(delta) >= self._min_chars * 3  # Substantial chunk
@@ -69,7 +59,6 @@ class SmoothStreamer:
             self._word_buffer = 0
 
     def finalize(self, final_text: str | None = None) -> None:
-        """Ensure final text is fully rendered."""
         text = final_text if final_text is not None else self._latest
         if not text:
             return
@@ -78,14 +67,12 @@ class SmoothStreamer:
         self._started = True
 
     def _flush(self, text: str) -> None:
-        """Render text to placeholder."""
         self._placeholder.write(text)
         self._rendered = text
         self._last_flush = time_module.monotonic()
 
     @staticmethod
     def _count_words(text: str) -> int:
-        """Count words in text for word-based flushing."""
         stripped = text.strip()
         if not stripped:
             return 0

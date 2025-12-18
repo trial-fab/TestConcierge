@@ -11,7 +11,7 @@ import uuid
 from typing import Optional, List, Tuple
 
 from utils.supabase_client import get_supabase_client
-
+from utils.splunk_logger import get_splunk_logger
 
 MAX_INPUT_CHARS = int(os.getenv("CHAT_INPUT_LIMIT", "4000"))
 _CONTROL_CATEGORIES = {"Cc", "Cf"}
@@ -23,13 +23,11 @@ _ZERO_WIDTH_CHARS = {
 }
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
-
 @dataclass(frozen=True)
 class PromptSecurityResult:
     blocked: bool
     score: float
     reasons: List[str]
-
 
 @dataclass(frozen=True)
 class _PromptRule:
@@ -38,9 +36,9 @@ class _PromptRule:
     weight: float
     reason: str
 
-
-def sanitize_user_input(text: str) -> str:
+def sanitize_user_input(text: str, request_id: str = None, session_id: str = None) -> str:
     """Normalize user text by stripping dangerous characters and capping length."""
+    original_text = text or ""
     text = unescape(text or "")
     text = unicodedata.normalize("NFC", text)
     text = text.replace("\u2019", "'").replace("\u201c", '"').replace("\u201d", '"')
@@ -52,13 +50,36 @@ def sanitize_user_input(text: str) -> str:
     )
     text = _HTML_TAG_RE.sub(" ", text)
     text = re.sub(r"[^\S\r\n]+", " ", text).strip()
-    return text[:MAX_INPUT_CHARS]
+    sanitized_text = text[:MAX_INPUT_CHARS]
 
+    # Log if sanitization resulted in significant changes
+    original_len = len(original_text)
+    sanitized_len = len(sanitized_text)
+    if original_len > 0:
+        change_ratio = abs(sanitized_len - original_len) / original_len
+        if change_ratio > 0.1 or original_len != sanitized_len:  # More than 10% change or any change
+            logger = get_splunk_logger()
+            logger.log_event(
+                category="security",
+                event_type="input_sanitization",
+                payload={
+                    "original_length": original_len,
+                    "sanitized_length": sanitized_len,
+                    "change_ratio": round(change_ratio, 3),
+                    "truncated": original_len > MAX_INPUT_CHARS,
+                    "input_preview": original_text[:100] if original_text else ""
+                },
+                severity="info",
+                request_id=request_id,
+                session_id=session_id,
+                component="security_sanitizer"
+            )
+
+    return sanitized_text
 
 def escape_sql_like(text: str) -> str:
     """Escape SQL LIKE wildcards (%, _) to prevent enumeration attacks."""
     return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
 
 _PROMPT_ATTACK_RULES: Tuple[_PromptRule, ...] = (
     _PromptRule(
@@ -110,39 +131,97 @@ _SENSITIVE_KEYWORDS = {
     "secret",
 }
 
-
 _PBKDF2_TAG = "pbkdf2_sha256"
 _PBKDF2_ITERATIONS = int(os.getenv("AUTH_PBKDF2_ITERATIONS", "130000"))
 _PASSWORD_MIN_LENGTH = max(8, int(os.getenv("AUTH_PASSWORD_MIN_LENGTH", "10")))
 
-
-def analyze_prompt_security(text: str) -> PromptSecurityResult:
+def analyze_prompt_security(text: str, request_id: str = None, session_id: str = None) -> PromptSecurityResult:
     content = (text or "").strip()
     if not content:
         return PromptSecurityResult(False, 0.0, [])
     lowered = content.lower()
     score = 0.0
     reasons: List[str] = []
+    matched_patterns: List[str] = []
+
     for rule in _PROMPT_ATTACK_RULES:
         if rule.pattern.search(lowered):
             score += rule.weight
             reasons.append(rule.reason)
+            matched_patterns.append(rule.name)
+
     keyword_hits = [kw for kw in _SENSITIVE_KEYWORDS if kw in lowered]
     if len(keyword_hits) >= 2:
         score += 0.4
         reasons.append(f"Multiple sensitive keywords detected ({', '.join(keyword_hits[:3])})")
+        matched_patterns.append("sensitive_keywords")
+
     if lowered.count("system prompt") >= 2:
         score += 0.3
         reasons.append("Repeated request for the system prompt")
+        matched_patterns.append("repeated_system_prompt")
+
     if lowered.count("```") >= 3 or lowered.count("~~~") >= 2:
         score += 0.2
         reasons.append("Large code block commonly used for prompt injections")
+        matched_patterns.append("large_code_block")
+
     blocked = score >= 1.0
+
+    # Log detailed rule matching with scores and patterns
+    if request_id or session_id:
+        logger = get_splunk_logger()
+        logger.log_event(
+            category="security",
+            event_type="prompt_security_analysis",
+            payload={
+                "blocked": blocked,
+                "score": round(min(score, 3.0), 3),
+                "matched_rules": reasons,
+                "matched_patterns": matched_patterns,
+                "pattern_count": len(matched_patterns),
+                "input_preview": content[:100] if content else ""
+            },
+            severity="warning" if blocked else "info",
+            request_id=request_id,
+            session_id=session_id,
+            component="security_analyzer"
+        )
+
     return PromptSecurityResult(blocked=blocked, score=min(score, 3.0), reasons=reasons)
 
 
-def is_injection(text: str) -> bool:
-    return analyze_prompt_security(text).blocked
+def is_injection(text: str, request_id: str = None, session_id: str = None) -> bool:
+    """
+    Check if text contains potential prompt injection attack.
+
+    Always logs security analysis results for threat intelligence,
+    regardless of whether the input is blocked.
+
+    Args:
+        text: User input to analyze
+        request_id: Request identifier for logging
+        session_id: Session identifier for logging
+
+    Returns:
+        True if the input should be blocked, False otherwise
+    """
+    logger = get_splunk_logger()
+    result = analyze_prompt_security(text, request_id=request_id, session_id=session_id)
+
+    # Always log security analysis for threat intelligence
+    logger.log_security_event(
+        request_id=request_id,
+        session_id=session_id,
+        event_type="injection_attempt" if result.blocked else "injection_analysis",
+        blocked=result.blocked,
+        score=result.score,
+        matched_rules=result.reasons,
+        user_input_preview=text[:100] if text else "",
+        severity="warning" if result.blocked else "info"
+    )
+
+    return result.blocked
 
 class AuthManager:
     def __init__(self, table_name: str | None = None):

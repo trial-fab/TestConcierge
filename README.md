@@ -1,193 +1,96 @@
-## USF Onboarding Assistant
-Streamlit concierge for Admissions/Orientation staff that grounds every answer in the USF onboarding corpus, drafts/sends emails, and books calendar invites with Google Meet links.
+## USF Campus Concierge
+AI concierge for Admissions and Orientation teams. Streamlit UI sits on top of a Supabase + pgvector RAG stack, Phi-4 handles chat/email/meeting flows, and Splunk provides observability.
 
 ---
 
-### Key Features (Advanced Techniques)
-- **RAG over Supabase pgvector** – Markdown corpus chunked/embedded with Hugging Face (`google/embeddinggemma-300m`) and retrieved via a Supabase RPC before every response.
-- **Azure Phi-4 Multi-Model Stack** – Three dedicated deployments (orchestrator, email specialist, meeting specialist) all accessed via Azure OpenAI so every workflow stays on Phi-4 while allowing task-specific prompting.
-- **Real MCP Tooling** – Model Context Protocol server mediates every Gmail/Calendar, drafting, and planning action (`retrieve_context`, `draft_email`, `plan_meeting`, `send_email`, `create_event`, etc.) with structured audit logs.
-- **Mini Assistants** – Streamlit chat page includes Email/Meeting builders that stream drafts, apply AI edits, send messages, and log recent actions.
-- **Safety & Guardrails** – Prompt-injection detector, token budgeting, citations enforced by the system prompt, and Supabase RLS for per-user chat state.
+### What’s Inside
+- **Campus-aware chat** – Hugging Face `google/embeddinggemma-300m` embeddings land in Supabase pgvector; every response cites the exact markdown chunk.
+- **Mini-assistants** – Email and Meeting builders run through the MCP server so drafts, edits, Gmail sends, and Calendar events stay auditable.
+- **Safety + Auth** – Prompt-injection detector, token budgets, Supabase RLS per user, structured error handling.
+- **Observability** – Streamlit + MCP + RAG + Google API events streamed to Splunk (dashboards + alerts included).
+
+---
+
+### Stack
+| Area | Tech |
+| --- | --- |
+| Frontend | Streamlit, custom CSS |
+| LLMs | Azure OpenAI Phi-4 orchestrator, email, meeting deployments |
+| Embeddings | Hugging Face hosted inference (`google/embeddinggemma-300m`) |
+| Backend | Supabase Postgres + pgvector + RPC for retrieval |
+| Agent tooling | MCP server/client (`agents/mcp.py`) |
+| Email/Calendar | Gmail + Google Calendar APIs |
+| Observability | Splunk HEC (system health + RAG dashboards, alerts) |
 
 ---
 
 ### Screenshots
-| Chat + Assistants | Recent Actions Log |
-|-------------------|--------------------|
-|<img width="2027" height="932" alt="image" src="https://github.com/user-attachments/assets/f16f24d9-0292-4639-879b-4bd4ae8cfaa9" />|<img width="2546" height="1149" alt="image" src="https://github.com/user-attachments/assets/5a8c8e4d-c111-4141-ae84-ee74b9f57e8d" />|
-
-
+| Chat + Assistants | Recent Actions |
+| --- | --- |
+| <img width="2027" height="932" alt="Chat + assistants UI" src="https://github.com/user-attachments/assets/f16f24d9-0292-4639-879b-4bd4ae8cfaa9" /> | <img width="2546" height="1149" alt="Recent actions panel" src="https://github.com/user-attachments/assets/5a8c8e4d-c111-4141-ae84-ee74b9f57e8d" /> |
 
 ---
 
-### Setup Instructions
-1. **Clone & Install**
-   ```bash
-   git clone <repo-url>
-   cd TA
-   python -m venv .venv && source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
-2. **Configure Environment**
-   - Copy `.env.example` → `.env`.
-   - Fill in Azure OpenAI (`AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`) plus the Phi-4 deployment names `AZURE_PHI4_ORCHESTRATOR`, `AZURE_PHI4_EMAIL`, `AZURE_PHI4_MEETING` (email/meeting fall back to the orchestrator name if omitted).
-   - Provide Hugging Face, Supabase, and Google OAuth values (same keys go into Streamlit Cloud secrets).
-3. **Prep Supabase**
-   - Create tables/RPC from `docs/schema.sql` (or Supabase SQL editor) and enable RLS (policies described in `docs/setup_guide.md`).
-4. **Ingest Content**
-   ```bash
-   python data_ingestion.py --source data/raw
-   ```
-   (Deletes and reloads `documents` + `chunks` each run.)
-5. **Run Locally**
-   ```bash
-   streamlit run app.py
-   ```
-   (The MCP server auto-launches when the app invokes a tool. You can also run it manually with `python -m utils.mcp serve`.)
-6. **Deploy**
-   - Push to GitHub, set secrets in Streamlit Cloud, deploy `app.py`.
-
----
-
-### How to Use
-1. Register/login (accounts stored in Supabase).
-2. Start a chat: ask policy questions; responses cite `Source N`.
-3. Use **＋** to open assistants:
-   - **Email Assistant** – enter student details → Generate Draft → Apply AI edit or Send.
-   - **Meeting Assistant** – supply summary, date/time, attendees → Check availability → Create Event (Meet link returned).
-4. Download/export sessions or rename/delete via the Options popover.
-5. Review recent assisted actions in the chat history for auditing.
-
----
-
-### Team Contributions
-- **Fabrizio** – RAG pipeline architecture, Azure LLM integration, email/meeting assistant logic, Google Workspace tools, Supabase client, data ingestion pipeline.
-- **Chi** – Streamlit UI/UX design, CSS styling (styles.css), assistant interface components, UI helper functions, chat layout and visual polish.
-- **Gang** – Project architecture and folder structure, database schema design, session/state management systems, authentication framework, security implementation.
-- **Rishi** – MCP server/client implementation, tool orchestration and routing, agent-to-tool integration, context protocol for email/meeting workflows.
-
----
-
-### Technologies
-- **LLM**: Azure OpenAI Phi-4 (chat)
-- **Embeddings**: Hugging Face `google/embeddinggemma-300m`
-- **Vector Store & Auth**: Supabase Postgres + pgvector + RLS
-- **Frontend**: Streamlit
-- **Agent Tooling**: Model Context Protocol client/server (`utils/mcp.py`)
-- **Email/Calendar**: Gmail + Google Calendar APIs (OAuth refresh flow)
-
----
-
-### Known Limitations
-- Corpus limited to curated Markdown set; if content is missing, the bot must refuse.
-- Single service account handles Gmail/Calendar actions; no per-user delegation yet.
-- Google Meet links issued only when the Calendar API token has `calendar.events` scope.
-- No offline/queueing—assistants require live API access.
-
----
-
-### Future Improvements
-1. Add per-user OAuth so assistants act on behalf of individual staff.
-2. Expand corpus ingestion pipeline with auto-diff + scheduled refreshes.
-3. Build evaluation harness for RAG answer quality + guardrail coverage.
-
----
-
-### Additional Docs
-- `docs/architecture_diagram.png` – System + data flow.
-- `docs/agent_workflow.png` – RAG + assistant tool sequence.
-- `docs/setup_guide.md` – Supabase schema, RLS policies, deployment checklist.
-
----
-
-### Supabase Schema (Quick Reference)
-```sql
-create extension if not exists vector;
-
-create table if not exists users (
-  id uuid primary key,
-  username text unique not null,
-  email text,
-  salt text not null,
-  pwd_hash text not null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-create table if not exists chat_sessions (
-  id uuid primary key,
-  user_id uuid references users(id) on delete cascade,
-  session_name text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-create table if not exists messages (
-  id uuid primary key,
-  session_id uuid references chat_sessions(id) on delete cascade,
-  role text,
-  content text,
-  tokens_in int,
-  tokens_out int,
-  created_at timestamptz default now()
-);
-
-create table if not exists audit_logs (
-  id uuid primary key,
-  session_id uuid references chat_sessions(id) on delete cascade,
-  event_type text,
-  payload jsonb,
-  created_at timestamptz default now()
-);
-
-create table if not exists documents (
-  id uuid primary key,
-  title text,
-  source_path text,
-  category text,
-  checksum text unique,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-create table if not exists chunks (
-  id uuid primary key,
-  document_id uuid references documents(id) on delete cascade,
-  chunk_index int,
-  content text,
-  section_title text,
-  metadata jsonb,
-  embedding vector(3072),
-  chunk_fp text unique,
-  created_at timestamptz default now()
-);
-
-create or replace function match_document_chunks(
-  query_embedding vector(3072),
-  match_count int default 6,
-  filter jsonb default '{}'::jsonb
-)
-returns table (
-  id uuid,
-  content text,
-  section_title text,
-  metadata jsonb,
-  similarity double precision
-) language plpgsql as $$
-begin
-  return query
-  select
-    c.id,
-    c.content,
-    c.section_title,
-    c.metadata,
-    1 - (c.embedding <=> query_embedding) as similarity
-  from chunks c
-  where (filter = '{}'::jsonb) or (c.metadata @> filter)
-  order by c.embedding <=> query_embedding
-  limit match_count;
-end;
-$$;
+### Quick Start
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env  # fill in Azure/Supabase/HF/Google/Splunk creds
+streamlit run app.py
 ```
-`data_ingestion.py` performs a full refresh each run by deleting all rows in `documents` and `chunks` before inserting the newly embedded corpus, so the tables stay clean without manual SQL.
+Key env vars:
+- `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_PHI4_*`
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- `HUGGINGFACEHUB_API_TOKEN`
+- `GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN`
+- `SPLUNK_HEC_URL`, `SPLUNK_HEC_TOKEN`, `SPLUNK_ENABLED=true`
+
+Supabase prep: run schema in `docs/setup_guide.md`, enable RLS, then load markdown with `python setup_db.py --source data/raw`.
+
+---
+
+### Using the App
+1. Register/login (Supabase stores users + sessions).
+2. Chat – ask policy questions, each answer lists `Source N` links.
+3. Tap **＋** to open assistants:
+   - **Email**: enter student details → Generate Draft → optional AI edit → send via Gmail.
+   - **Meeting**: summary/date/attendees → check availability → create event with Meet link.
+4. Rename/export/delete sessions from sidebar; recent actions collapse into audit cards.
+
+---
+
+### Observability
+- **Dashboards**: System Health + RAG Performance panels covering request health, pipeline times, and assistant usage.
+- **Alerts**: “High Request Error Rate” and “RAG Latency Degradation” alerts hook into the same telemetry.
+- **Logging**: `utils/splunk_logger.py` batches events, retries on failure, and falls back to `logs/splunk_fallback.log` if HEC is down.
+Example searches:
+```spl
+index=main sourcetype="usf_concierge:request" event_type=request_error
+| stats count by session_id
+
+index=main sourcetype="usf_concierge:rag" event_type=vector_search
+| stats avg(metrics.duration_ms) by _time span=5m
+```
+More detail lives in `docs/SPLUNK_QUICKSTART.md`, `docs/SPLUNK_QUERIES.md`, and the in-depth OBSERVABILITY doc referenced there.
+
+---
+
+### Keep the app up
+`.github/workflows/keep-alive.yml` runs every 2 hours:
+- Hits your Streamlit Cloud URL (set `STREAMLIT_APP_URL` in GitHub Actions secrets).
+- Optionally pings Supabase REST (`SUPABASE_URL`, `SUPABASE_ANON_KEY` secrets).
+
+---
+
+### Roadmap
+1. Per-user Gmail/Calendar OAuth instead of a shared service account.
+2. Scheduled data ingestion with diffing + eval harness for RAG quality.
+3. User-level audit exports + admin panel.
+
+---
+
+### Credits
+- Fabrizio – RAG pipeline, Azure integration, assistants, Google tooling, ingestion, Splunk observability.
+- Chi – UI/UX, Streamlit components, styling.
+- Gang – Architecture, database schema, session/state/auth layers, security.
+- Rishi – MCP server/client, tool orchestration, email/meeting workflow wiring.

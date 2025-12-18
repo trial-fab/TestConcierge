@@ -16,7 +16,9 @@ __pycache__/
 # Virtual environments
 .venv/
 venv/
+venv_linux/
 env/
+3.11v/
 
 # OS cruft
 .DS_Store
@@ -31,3 +33,8 @@ desktop.ini
 *.log
 logs/
 cache/
+splunk/
+docs/SPLUNK_*
+
+docs/SPLUNK_*
+splunk/

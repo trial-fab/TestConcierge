@@ -1,5 +1,6 @@
 import base64
 import os
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from email.mime.text import MIMEText
@@ -8,6 +9,10 @@ from typing import Any, List, Optional
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from utils.splunk_logger import get_splunk_logger
+
+# Initialize Splunk logger (works in both main process and MCP subprocess)
+logger = get_splunk_logger()
 
 SCOPES = [
     "https://www.googleapis.com/auth/calendar.readonly",
@@ -55,7 +60,8 @@ class GoogleWorkspaceTools:
         except HttpError as e:
             raise GoogleWorkspaceError(f"Failed to initialise Google {api} client: {e}") from e
 
-    def list_calendar_events(self, max_results: int = 5) -> List[dict[str, Any]]:
+    def list_calendar_events(self, max_results: int = 5, request_id: str = None, session_id: str = None) -> List[dict[str, Any]]:
+        start = time.perf_counter()
         service = self._build_service("calendar", "v3")
         try:
             events_result = (
@@ -69,7 +75,26 @@ class GoogleWorkspaceTools:
                 )
                 .execute()
         )
+            duration_ms = (time.perf_counter() - start) * 1000
+            logger.log_api_call(
+                request_id=request_id,
+                session_id=session_id,
+                api_name="google_calendar",
+                operation="list_events",
+                duration_ms=duration_ms,
+                status_code=200
+            )
         except HttpError as e:
+            duration_ms = (time.perf_counter() - start) * 1000
+            logger.log_api_call(
+                request_id=request_id,
+                session_id=session_id,
+                api_name="google_calendar",
+                operation="list_events",
+                duration_ms=duration_ms,
+                status_code=500,
+                error=str(e)
+            )
             raise GoogleWorkspaceError(f"Calendar API error: {e}") from e
 
         items = events_result.get("items", [])
@@ -86,7 +111,8 @@ class GoogleWorkspaceTools:
             )
         return events
 
-    def list_recent_messages(self, query: str = "", max_results: int = 5) -> List[dict[str, str]]:
+    def list_recent_messages(self, query: str = "", max_results: int = 5, request_id: str = None, session_id: str = None) -> List[dict[str, str]]:
+        start = time.perf_counter()
         service = self._build_service("gmail", "v1")
         try:
             resp = (
@@ -95,7 +121,26 @@ class GoogleWorkspaceTools:
                 .list(userId="me", q=query, maxResults=max_results)
                 .execute()
             )
+            duration_ms = (time.perf_counter() - start) * 1000
+            logger.log_api_call(
+                request_id=request_id,
+                session_id=session_id,
+                api_name="gmail",
+                operation="list_messages",
+                duration_ms=duration_ms,
+                status_code=200
+            )
         except HttpError as e:
+            duration_ms = (time.perf_counter() - start) * 1000
+            logger.log_api_call(
+                request_id=request_id,
+                session_id=session_id,
+                api_name="gmail",
+                operation="list_messages",
+                duration_ms=duration_ms,
+                status_code=500,
+                error=str(e)
+            )
             raise GoogleWorkspaceError(f"Gmail API error: {e}") from e
 
         message_ids = resp.get("messages", []) or []
@@ -118,10 +163,10 @@ class GoogleWorkspaceTools:
             )
         return messages
 
-    def send_email(self, to_address: str, subject: str, body: str) -> str:
+    def send_email(self, to_address: str, subject: str, body: str, request_id: str = None, session_id: str = None) -> str:
         if not to_address or not subject or not body:
             raise GoogleWorkspaceError("To, subject, and body are required to send email.")
-
+        start = time.perf_counter()
         service = self._build_service("gmail", "v1")
         mime_msg = MIMEText(body)
         mime_msg["to"] = to_address
@@ -129,7 +174,32 @@ class GoogleWorkspaceTools:
         raw = base64.urlsafe_b64encode(mime_msg.as_bytes()).decode("utf-8")
         try:
             result = service.users().messages().send(userId="me", body={"raw": raw}).execute()
+            duration_ms = (time.perf_counter() - start) * 1000
+            logger.log_api_call(
+                request_id=request_id,
+                session_id=session_id,
+                api_name="gmail",
+                operation="send_email",
+                duration_ms=duration_ms,
+                status_code=200,
+                metadata={
+                    "recipient": to_address,
+                    "subject_length": len(subject),
+                    "body_length": len(body),
+                    "message_id": result.get("id", "unknown")
+                }
+            )
         except HttpError as e:
+            duration_ms = (time.perf_counter() - start) * 1000
+            logger.log_api_call(
+                request_id=request_id,
+                session_id=session_id,
+                api_name="gmail",
+                operation="send_email",
+                duration_ms=duration_ms,
+                status_code=500,
+                error=str(e)
+            )
             raise GoogleWorkspaceError(f"Gmail send error: {e}") from e
         return result.get("id", "sent")
 
@@ -152,9 +222,10 @@ class GoogleWorkspaceTools:
         end = start + timedelta(minutes=duration_minutes)
         return start_iso, end.isoformat()
 
-    def check_availability(self, start_iso: str, duration_minutes: int) -> bool:
+    def check_availability(self, start_iso: str, duration_minutes: int, request_id: str = None, session_id: str = None) -> bool:
         start_iso = self._normalize_iso(start_iso)
         start_iso, end_iso = self._time_range(start_iso, duration_minutes)
+        start_time = time.perf_counter()
         service = self._build_service("calendar", "v3")
         body = {
             "timeMin": start_iso,
@@ -163,7 +234,26 @@ class GoogleWorkspaceTools:
         }
         try:
             resp = service.freebusy().query(body=body).execute()
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            logger.log_api_call(
+                request_id=request_id,
+                session_id=session_id,
+                api_name="google_calendar",
+                operation="check_availability",
+                duration_ms=duration_ms,
+                status_code=200
+            )
         except HttpError as e:
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            logger.log_api_call(
+                request_id=request_id,
+                session_id=session_id,
+                api_name="google_calendar",
+                operation="check_availability",
+                duration_ms=duration_ms,
+                status_code=500,
+                error=str(e)
+            )
             raise GoogleWorkspaceError(f"Calendar free/busy error: {e}") from e
         busy = resp.get("calendars", {}).get("primary", {}).get("busy", [])
         return len(busy) == 0
@@ -185,9 +275,12 @@ class GoogleWorkspaceTools:
         attendees: Optional[List[str]] = None,
         description: str = "",
         location: str = "",
+        request_id: str = None,
+        session_id: str = None,
     ) -> dict[str, str]:
         start_iso = self._normalize_iso(start_iso)
         start_iso, end_iso = self._time_range(start_iso, duration_minutes)
+        start_time = time.perf_counter()
         service = self._build_service("calendar", "v3")
         attendee_entries = (
             [{"email": email} for email in attendees if email]
@@ -219,12 +312,39 @@ class GoogleWorkspaceTools:
                 )
                 .execute()
             )
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            hangout_link = result.get("hangoutLink")
+            if not hangout_link:
+                conference = (result.get("conferenceData") or {}).get("entryPoints") or []
+                hangout_link = conference[0].get("uri") if conference else ""
+
+            logger.log_api_call(
+                request_id=request_id,
+                session_id=session_id,
+                api_name="google_calendar",
+                operation="create_event",
+                duration_ms=duration_ms,
+                status_code=200,
+                metadata={
+                    "event_id": result.get("id", "unknown"),
+                    "has_meet_link": bool(hangout_link),
+                    "attendee_count": len(attendee_entries),
+                    "duration_minutes": duration_minutes
+                }
+            )
         except HttpError as e:
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            logger.log_api_call(
+                request_id=request_id,
+                session_id=session_id,
+                api_name="google_calendar",
+                operation="create_event",
+                duration_ms=duration_ms,
+                status_code=500,
+                error=str(e)
+            )
             raise GoogleWorkspaceError(f"Calendar insert error: {e}") from e
-        hangout_link = result.get("hangoutLink")
-        if not hangout_link:
-            conference = (result.get("conferenceData") or {}).get("entryPoints") or []
-            hangout_link = conference[0].get("uri") if conference else ""
+
         return {
             "event_id": result.get("id", "event-created"),
             "hangout_link": hangout_link,

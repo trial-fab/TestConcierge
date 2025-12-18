@@ -1,0 +1,38 @@
+name: keep-streamlit-supabase-alive
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-streamlit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Streamlit Cloud app
+        env:
+          STREAMLIT_APP_URL: ${{ secrets.STREAMLIT_APP_URL }}
+        run: |
+          if [ -z "$STREAMLIT_APP_URL" ]; then
+            echo "STREAMLIT_APP_URL secret is not set" >&2
+            exit 1
+          fi
+          curl -fsS "$STREAMLIT_APP_URL" >/dev/null
+
+  ping-supabase:
+    runs-on: ubuntu-latest
+    needs: ping-streamlit
+    steps:
+      - name: Ping Supabase REST endpoint
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Supabase secrets are not set; skipping" >&2
+            exit 0
+          fi
+          curl -fsS \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/health" >/dev/null

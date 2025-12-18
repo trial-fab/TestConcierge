@@ -9,7 +9,6 @@
 /* Base Page Styles (applies globally across all pages) */
 html, body {
   font-family: 'Segoe UI', Roboto, 'Open Sans', sans-serif;
-  scroll-behavior: smooth;
   margin: 0;
 }
 
@@ -376,4 +375,10 @@ h3 button {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
+}
+
+body:not(:has(.observability-page-active)) #vg-tooltip-element,
+body:not(:has(.observability-page-active)) .vg-tooltip,
+body:not(:has(.observability-page-active)) .vega-tooltip {
+  display: none !important;
 }

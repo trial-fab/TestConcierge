@@ -1,11 +1,9 @@
-"""Email assistant logic for drafting, editing, and sending emails."""
 import streamlit as st
 from typing import Any, Optional
 from utils.formatters import split_subject_from_body
 from utils.rag import estimate_tokens
 from utils.state_manager import queue_action_collapse
 from tools.google_tools import GoogleWorkspaceError
-
 
 def draft_email_via_mcp(
     mcp_client,
@@ -17,7 +15,6 @@ def draft_email_via_mcp(
     previous_draft: str | None = None,
     placeholder=None,
 ) -> dict[str, Any] | None:
-    """Draft an email using the MCP client."""
     try:
         draft = mcp_client.draft_email(
             student_message,
@@ -38,9 +35,7 @@ def draft_email_via_mcp(
         placeholder.markdown(body)
     return draft
 
-
 def start_email_draft(mcp_client, db, to_addr: str, subject: str, student_msg: str) -> None:
-    """Start drafting a new email."""
     to_addr = (to_addr or "").strip()
     subject = (subject or "USF Follow-up").strip()
     student_msg = (student_msg or "").strip()
@@ -52,7 +47,6 @@ def start_email_draft(mcp_client, db, to_addr: str, subject: str, student_msg: s
     in_toks = estimate_tokens(student_msg)
 
     # Draft email without showing in chat history
-    # Note: Drafting message will be shown by caller in chat_col
     drafted = draft_email_via_mcp(
         mcp_client,
         db,
@@ -88,8 +82,6 @@ def start_email_draft(mcp_client, db, to_addr: str, subject: str, student_msg: s
         "student_msg": student_msg,
     }
     st.session_state.email_draft_sync_value = cleaned_draft
-    # Don't set show_email_builder here - let the handler manage it after processing
-
 
 def apply_email_edit(mcp_client, db, instructions: str) -> None:
     """Apply AI-powered edits to an existing email draft."""
@@ -104,7 +96,6 @@ def apply_email_edit(mcp_client, db, instructions: str) -> None:
         return
 
     # Update email draft without showing in chat history
-    # Note: Updating message will be shown by caller in chat_col
     drafted = draft_email_via_mcp(
         mcp_client,
         db,
@@ -141,8 +132,6 @@ def apply_email_edit(mcp_client, db, instructions: str) -> None:
     pending["body"] = revised
     st.session_state.pending_email = pending
     st.session_state.email_draft_sync_value = revised
-    # Don't set show_email_builder here - let the handler manage it after processing
-
 
 def save_manual_email_edit(text: str) -> bool:
     """Save manual edits to the email draft."""
@@ -153,7 +142,6 @@ def save_manual_email_edit(text: str) -> bool:
     pending["body"] = text
     st.session_state.email_draft_sync_value = None
     return True
-
 
 def send_email_draft(mcp_client, db) -> None:
     """Send the current email draft."""

@@ -1,9 +1,7 @@
-"""Meeting assistant logic for planning and creating calendar events."""
 import streamlit as st
 from typing import Any
 from utils.rag import estimate_tokens
 from utils.state_manager import queue_action_collapse
-
 
 def plan_meeting(
     mcp_client,
@@ -15,7 +13,7 @@ def plan_meeting(
     description: str,
     location: str,
 ) -> None:
-    """Plan a meeting by checking availability and preparing details."""
+
     summary = (summary or "Student Meeting").strip()
     start_raw = (start_raw or "").strip()
     attendee_raw = attendee_raw or ""
@@ -60,8 +58,6 @@ def plan_meeting(
         assistant_msg = "The requested slot is busy." + suggestion_text
         st.session_state.meeting_notes_sync_value = assistant_msg
 
-    # Don't add to chat history - editable plan will be shown in assistant UI
-    # Log interaction but don't show message in chat
     mcp_client.log_interaction(
         st.session_state.current_session_id,
         "meeting_plan",
@@ -75,8 +71,6 @@ def plan_meeting(
             "suggested": suggested,
         },
     )
-    # Don't set show_meeting_builder here - let the handler manage it after processing
-
 
 def create_meeting_event(mcp_client, db) -> None:
     """Create a calendar event from the current meeting plan."""
@@ -85,7 +79,6 @@ def create_meeting_event(mcp_client, db) -> None:
         st.warning("No meeting plan to create. Check availability first.")
         return
 
-    # Use edited meeting notes if available
     description = st.session_state.meeting_notes_text or plan.get("description", "")
 
     try:
@@ -144,7 +137,6 @@ def create_meeting_event(mcp_client, db) -> None:
 
     queue_action_collapse("meeting", meeting_action)
     st.session_state.pending_meeting = None
-    # Don't modify widget keys directly - they'll be cleared when widget isn't rendered
     st.session_state.meeting_notes_sync_value = None
 
 
@@ -161,11 +153,9 @@ def apply_meeting_edit(mcp_client, db, instructions: str) -> None:
         return
 
     # Use mcp_client to regenerate meeting notes with instructions
-    # Note: Updating message will be shown by caller in chat_col
     current_notes = st.session_state.meeting_notes_text or plan.get("ai_notes", "")
 
     try:
-        # Re-plan meeting with edit instructions
         updated_plan = mcp_client.plan_meeting(
             plan.get("summary", ""),
             plan.get("start", ""),
@@ -185,20 +175,16 @@ def apply_meeting_edit(mcp_client, db, instructions: str) -> None:
         st.error(f"Failed to update notes: {e}")
         return
 
-    # Update plan and sync to text area (don't add to chat history)
     plan["ai_notes"] = revised_notes
     plan["description"] = revised_notes
     st.session_state.pending_meeting = plan
     st.session_state.meeting_notes_sync_value = revised_notes
 
-    # Log interaction but don't add to chat history
     mcp_client.log_interaction(
         st.session_state.current_session_id,
         "meeting_edit",
         {"instructions": instructions, "notes": revised_notes},
     )
-    # Don't set show_meeting_builder here - let the handler manage it after processing
-
 
 def save_manual_meeting_edit(text: str) -> bool:
     """Save manual edits to meeting notes."""
