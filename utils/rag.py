@@ -381,7 +381,10 @@ def retrieve_matches(
             }
         )
 
-    reranked = _rerank_hits(query, hits, top_k=desired, request_id=request_id, session_id=session_id)
+    if os.getenv("DISABLE_RERANKING", "false").lower() == "true":
+        reranked = hits[:desired]  
+    else:
+        reranked = _rerank_hits(query, hits, top_k=desired, request_id=request_id, session_id=session_id)
 
     duration_ms = (time.perf_counter() - start) * 1000
     logger.log_event(
