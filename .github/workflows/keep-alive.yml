@@ -1,66 +1,66 @@
-name: keep-streamlit-supabase-alive
+# name: keep-streamlit-supabase-alive
 
-on:
-  schedule:
-    - cron: '0 */6 * * *'
-  workflow_dispatch:
+# on:
+#   schedule:
+#     - cron: '0 */6 * * *'
+#   workflow_dispatch:
 
-jobs:
-  ping-streamlit:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Ping Streamlit Cloud app
-        env:
-          STREAMLIT_APP_URL: ${{ secrets.STREAMLIT_APP_URL }}
-        run: |
-          if [ -z "$STREAMLIT_APP_URL" ]; then
-            echo "STREAMLIT_APP_URL secret is not set" >&2
-            exit 1
-          fi
+# jobs:
+#   ping-streamlit:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Ping Streamlit Cloud app
+#         env:
+#           STREAMLIT_APP_URL: ${{ secrets.STREAMLIT_APP_URL }}
+#         run: |
+#           if [ -z "$STREAMLIT_APP_URL" ]; then
+#             echo "STREAMLIT_APP_URL secret is not set" >&2
+#             exit 1
+#           fi
           
-          echo "Pinging Streamlit app..."
+#           echo "Pinging Streamlit app..."
           
 
-          FINAL_URL=$(curl -Ls \
-            -c /tmp/cookies.txt \
-            -b /tmp/cookies.txt \
-            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
-            --max-time 30 \
-            -w "%{url_effective}" \
-            -o /tmp/response.html \
-            "$STREAMLIT_APP_URL")
+#           FINAL_URL=$(curl -Ls \
+#             -c /tmp/cookies.txt \
+#             -b /tmp/cookies.txt \
+#             -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
+#             --max-time 30 \
+#             -w "%{url_effective}" \
+#             -o /tmp/response.html \
+#             "$STREAMLIT_APP_URL")
           
-          EXIT_CODE=$?
+#           EXIT_CODE=$?
           
-          if [ $EXIT_CODE -eq 0 ]; then
-            echo "✓ Successfully accessed: $FINAL_URL"
-            echo "Response size: $(wc -c < /tmp/response.html) bytes"
-          else
-            if [ $EXIT_CODE -eq 47 ]; then
-              echo "⚠ Hit redirect limit, but traffic was registered"
-            else
-              echo "✗ Failed with exit code $EXIT_CODE" >&2
-              exit 1
-            fi
-          fi
+#           if [ $EXIT_CODE -eq 0 ]; then
+#             echo "✓ Successfully accessed: $FINAL_URL"
+#             echo "Response size: $(wc -c < /tmp/response.html) bytes"
+#           else
+#             if [ $EXIT_CODE -eq 47 ]; then
+#               echo "⚠ Hit redirect limit, but traffic was registered"
+#             else
+#               echo "✗ Failed with exit code $EXIT_CODE" >&2
+#               exit 1
+#             fi
+#           fi
 
-  ping-supabase:
-    runs-on: ubuntu-latest
-    needs: ping-streamlit
-    steps:
-      - name: Ping Supabase REST endpoint
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "Supabase secrets not set; skipping"
-            exit 0
-          fi
+#   ping-supabase:
+#     runs-on: ubuntu-latest
+#     needs: ping-streamlit
+#     steps:
+#       - name: Ping Supabase REST endpoint
+#         env:
+#           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+#           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+#         run: |
+#           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+#             echo "Supabase secrets not set; skipping"
+#             exit 0
+#           fi
           
-          curl -s -o /dev/null \
-            -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "$SUPABASE_URL/rest/v1/users?select=id&limit=1"
+#           curl -s -o /dev/null \
+#             -H "apikey: $SUPABASE_ANON_KEY" \
+#             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+#             "$SUPABASE_URL/rest/v1/users?select=id&limit=1"
           
-          echo "✓ Pinged Supabase"
+#           echo "✓ Pinged Supabase"
