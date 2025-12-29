@@ -17,7 +17,9 @@ jobs:
             echo "STREAMLIT_APP_URL secret is not set" >&2
             exit 1
           fi
-          curl -fsS "$STREAMLIT_APP_URL" >/dev/null
+          echo "Pinging Streamlit app at $STREAMLIT_APP_URL"
+          curl -fsSL --max-redirs 10 --max-time 30 "$STREAMLIT_APP_URL" >/dev/null
+          echo "Successfully pinged Streamlit app"
 
   ping-supabase:
     runs-on: ubuntu-latest
@@ -32,7 +34,9 @@ jobs:
             echo "Supabase secrets are not set; skipping" >&2
             exit 0
           fi
-          curl -fsS \
+          echo "Pinging Supabase endpoint"
+          curl -fsSL --max-time 30 \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "$SUPABASE_URL/rest/v1/users?select=id&limit=1"
+            "$SUPABASE_URL/rest/v1/users?select=id&limit=1" >/dev/null
+          echo "Successfully pinged Supabase"
