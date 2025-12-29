@@ -17,7 +17,28 @@ jobs:
             echo "STREAMLIT_APP_URL secret is not set" >&2
             exit 1
           fi
-          curl -fsS "$STREAMLIT_APP_URL" >/dev/null
+          echo "Pinging Streamlit app at $STREAMLIT_APP_URL"
+
+          # Use -w to show HTTP status code and -o to save body to temp file
+          HTTP_CODE=$(curl -fsSL --max-redirs 10 --max-time 30 \
+            -w "%{http_code}" \
+            -o /tmp/streamlit_response.html \
+            "$STREAMLIT_APP_URL")
+
+          echo "HTTP Status Code: $HTTP_CODE"
+
+          # Show first 500 chars of response for verification
+          echo "Response preview:"
+          head -c 500 /tmp/streamlit_response.html
+          echo ""
+
+          # Verify we got a successful response
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✓ Successfully pinged Streamlit app (HTTP $HTTP_CODE)"
+          else
+            echo "✗ Failed to ping Streamlit app (HTTP $HTTP_CODE)" >&2
+            exit 1
+          fi
 
   ping-supabase:
     runs-on: ubuntu-latest
@@ -32,7 +53,23 @@ jobs:
             echo "Supabase secrets are not set; skipping" >&2
             exit 0
           fi
-          curl -fsS \
+          echo "Pinging Supabase endpoint"
+
+          HTTP_CODE=$(curl -fsSL --max-time 30 \
+            -w "%{http_code}" \
+            -o /tmp/supabase_response.json \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "$SUPABASE_URL/rest/v1/users?select=id&limit=1"
+            "$SUPABASE_URL/rest/v1/users?select=id&limit=1")
+
+          echo "HTTP Status Code: $HTTP_CODE"
+          echo "Response:"
+          cat /tmp/supabase_response.json
+          echo ""
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✓ Successfully pinged Supabase (HTTP $HTTP_CODE)"
+          else
+            echo "✗ Failed to ping Supabase (HTTP $HTTP_CODE)" >&2
+            exit 1
+          fi
