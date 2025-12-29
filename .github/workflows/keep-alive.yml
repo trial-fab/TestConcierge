@@ -2,7 +2,7 @@ name: keep-streamlit-supabase-alive
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours (12hr hibernate, so 6hr is safe)
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
@@ -17,13 +17,32 @@ jobs:
             echo "STREAMLIT_APP_URL secret is not set" >&2
             exit 1
           fi
-          echo "Pinging Streamlit app at $STREAMLIT_APP_URL"
           
-          # Just make the request - initial request counts as traffic
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$STREAMLIT_APP_URL")
+          echo "Pinging Streamlit app..."
           
-          echo "HTTP Status: $HTTP_CODE"
-          echo "✓ Traffic registered with Streamlit app"
+
+          FINAL_URL=$(curl -Ls \
+            -c /tmp/cookies.txt \
+            -b /tmp/cookies.txt \
+            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
+            --max-time 30 \
+            -w "%{url_effective}" \
+            -o /tmp/response.html \
+            "$STREAMLIT_APP_URL")
+          
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✓ Successfully accessed: $FINAL_URL"
+            echo "Response size: $(wc -c < /tmp/response.html) bytes"
+          else
+            if [ $EXIT_CODE -eq 47 ]; then
+              echo "⚠ Hit redirect limit, but traffic was registered"
+            else
+              echo "✗ Failed with exit code $EXIT_CODE" >&2
+              exit 1
+            fi
+          fi
 
   ping-supabase:
     runs-on: ubuntu-latest
@@ -35,10 +54,9 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "Supabase secrets are not set; skipping" >&2
+            echo "Supabase secrets not set; skipping"
             exit 0
           fi
-          echo "Pinging Supabase endpoint"
           
           curl -s -o /dev/null \
             -H "apikey: $SUPABASE_ANON_KEY" \
